@@ -1,0 +1,136 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: white;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* Table container */
+table {
+  background-color: white;
+  border-collapse: collapse;
+  margin: 1rem auto;
+  width: 95%;
+  table-layout: fixed;
+}
+
+/* Caption styling */
+caption {
+  font-size: 1.8rem;
+  font-weight: bold;
+  padding: 1.5rem;
+  text-align: center;
+  background-color: white;
+}
+
+caption .institution {
+  display: none;
+}
+
+caption .name {
+  font-weight: normal;
+}
+
+/* Table headers */
+th {
+  background-color: white;
+  border: 1px solid #333;
+  padding: 1rem 0.8rem;
+  font-weight: bold;
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+/* Table cells */
+td {
+  border: 1px solid #333;
+  padding: 2rem 1rem;
+  text-align: center;
+  vertical-align: middle;
+  min-height: 4rem;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  background-color: white;
+}
+
+/* Hide --- in cells */
+td {
+  white-space: pre-line;
+}
+
+/* First column (Week/Time labels) */
+th.yAxis {
+  background-color: white;
+  font-weight: bold;
+  text-align: center;
+  padding: 1rem;
+  width: 8%;
+  font-size: 0.9rem;
+}
+
+/* Day headers */
+th.xAxis {
+  background-color: white;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* Footer styling (in case any remain) */
+tr.foot {
+  display: none;
+}
+
+/* Print and PDF styles */
+@media print {
+  html, body {
+    height: 100%;
+    width: 100%;
+  }
+
+  body {
+    background-color: white;
+    padding: 0.5rem;
+  }
+  
+  table {
+    page-break-inside: avoid;
+    margin: 0.5rem auto;
+    width: 98%;
+  }
+  
+  caption {
+    padding: 1rem;
+    font-size: 1.5rem;
+  }
+  
+  td {
+    padding: 1.5rem 0.8rem;
+    min-height: 3.5rem;
+    font-size: 0.85rem;
+  }
+  
+  th {
+    padding: 0.9rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  th.yAxis {
+    padding: 0.9rem;
+    font-size: 0.85rem;
+  }
+}
