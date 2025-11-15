@@ -117,7 +117,7 @@ export class TimetableController {
   ) {
     console.time('databaseQuery');
     console.time('plz');
-    const fullTimetable = await this.timetableService.findFull(28, 2);
+    const fullTimetable = await this.timetableService.findFull(id, userId);
     console.timeEnd('plz');
 
     if (!fullTimetable) {
