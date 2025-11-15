@@ -22,9 +22,11 @@ export class Year {
   id: number;
 
   @Column()
-  name: string; // e.g., "2025-2026", "Freshman Year"
+  name: string;
 
-  // A Year has many Groups. This defines the "one" side of the relationship.
+  @Column({ type: 'integer', default: 0 })
+  assigned_hours: number;
+
   @OneToMany(() => Group, (group) => group.year)
   groups: Group[];
 

@@ -24,6 +24,9 @@ export class SubGroup {
   @Column()
   name: string;
 
+  @Column({ type: 'integer', default: 0 })
+  assigned_hours: number;
+
   @ManyToOne(() => Group, (group) => group.subGroups, { onDelete: 'CASCADE' })
   group: Group;
 

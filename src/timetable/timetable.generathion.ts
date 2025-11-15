@@ -15,23 +15,7 @@ import { JSDOM } from 'jsdom';
 import { ConfigService } from '@nestjs/config'; // Import ConfigService
 import type { Response } from 'express';
 import archiver = require('archiver');
-
-// Configuration for file processing to make the code DRY
-const FILES_TO_PROCESS = [
-  { identifier: '_years_days_horizontal.html', outputName: 'years_table.html' },
-  {
-    identifier: '_groups_days_horizontal.html',
-    outputName: 'groups_table.html',
-  },
-  {
-    identifier: '_subgroups_days_horizontal.html',
-    outputName: 'subgroups_table.html',
-  },
-  {
-    identifier: '_teachers_days_horizontal.html',
-    outputName: 'teachers_table.html',
-  },
-];
+import { Year } from 'src/years/entity/years.entity';
 
 @Injectable()
 export class TimetableGenerationService {
@@ -61,6 +45,49 @@ export class TimetableGenerationService {
       throw new BadRequestException(
         'Timetable must contain at least 1 activity.',
       );
+    if (fullTimetable.days.length <= 0 || fullTimetable.hours.length <= 0) {
+      throw new BadRequestException(
+        'timetable must contain atleast 1 or more days and hours',
+      );
+    }
+    const totalHourPerWeek =
+      fullTimetable.hours.length * fullTimetable.days.length;
+    const errors: string[] = [];
+    fullTimetable.teachers.forEach((teacher) => {
+      if (teacher.assigned_hours > totalHourPerWeek) {
+        errors.push(
+          `Teacher "${teacher.name}" is overscheduled with ${teacher.assigned_hours} hours (limit is ${totalHourPerWeek}).`,
+        );
+      }
+    });
+
+    fullTimetable.years.forEach((year) => {
+      if (year.assigned_hours > totalHourPerWeek) {
+        errors.push(
+          `Year "${year.name}" is overscheduled with ${year.assigned_hours} hours (limit is ${totalHourPerWeek}).`,
+        );
+      }
+    });
+
+    fullTimetable.groups.forEach((group) => {
+      if (group.assigned_hours > totalHourPerWeek) {
+        errors.push(
+          `Group "${group.name}" is overscheduled with ${group.assigned_hours} hours (limit is ${totalHourPerWeek}).`,
+        );
+      }
+    });
+
+    fullTimetable.subGroups.forEach((subgroup) => {
+      if (subgroup.assigned_hours > totalHourPerWeek) {
+        errors.push(
+          `Subgroup "${subgroup.name}" is overscheduled with ${subgroup.assigned_hours} hours (limit is ${totalHourPerWeek}).`,
+        );
+      }
+    });
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors.join('\n'));
+    }
 
     const uniqueId = `timetable-${timetableId}-${Date.now()}`;
     const tempDir = os.tmpdir();

@@ -25,6 +25,9 @@ export class Group {
   @Column()
   name: string;
 
+  @Column({ type: 'integer', default: 0 })
+  assigned_hours: number;
+
   @ManyToOne(() => Year, (year) => year.groups, { onDelete: 'CASCADE' })
   year: Year;
 

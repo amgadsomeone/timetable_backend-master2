@@ -51,7 +51,7 @@ export class ActivitiesService {
       },
     });
   }
-  
+
   async FindActivityAi(timetableId: number, userId: number) {
     return this.activityRepository.findAndCount({
       where: { timetable: { id: timetableId, User: { id: userId } } },
@@ -171,7 +171,8 @@ export class ActivitiesService {
       // 4. Catch database-specific errors and convert them into a user-friendly message.
       if (error instanceof QueryFailedError && error.driverError?.code) {
         // The error code for foreign key violation can differ by database (e.g., '23503' in PostgreSQL)
-        if (error.driverError.code === '23503') { // Example for PostgreSQL
+        if (error.driverError.code === '23503') {
+          // Example for PostgreSQL
           throw new BadRequestException(
             `Invalid data provided. One of the IDs for subject, teacher, year, group, sub-group, or tag does not exist in the specified timetable.`,
           );
@@ -180,7 +181,6 @@ export class ActivitiesService {
       // Re-throw any other unexpected errors.
       throw error;
     }
-  
   }
 
   async findById(timetableId: number, id: number, userId: number) {
@@ -268,10 +268,18 @@ export class ActivitiesService {
   }
 
   async deleteOne(timetableId: number, id: number, userId: number) {
-    const res = await this.activityRepository.delete({
-      id,
-      timetable: { id: timetableId, User: { id: userId } },
+    // this could resolve into cardisian exploding problem it gotta be fixed 
+    const activityToRemove = await this.activityRepository.findOne({
+      where: { id, timetable: { id: timetableId, User: { id: userId } } },
+      relations: ['teachers', 'groups', 'subGroups', 'years'],
     });
-    return (res?.affected || 0) > 0;
+
+    // A good practice is to check if it even exists.
+    if (!activityToRemove) {
+      throw new NotFoundException(`Activity with ID ${id} not found.`);
+    }
+
+    const res = await this.activityRepository.remove(activityToRemove);
+    return true;
   }
 }

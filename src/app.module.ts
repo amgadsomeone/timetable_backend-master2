@@ -22,6 +22,7 @@ import { AgentModule } from './agent/agent.module';
 import { ClerkAuthGuard } from './auth/gurds/clerk-auth.guard';
 import { User } from './users/entity/users.entity';
 import { BullModule } from '@nestjs/bullmq';
+import { ActivitySubscriber } from './activities/activity.subscriber';
 
 @Module({
   imports: [
@@ -50,12 +51,15 @@ import { BullModule } from '@nestjs/bullmq';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         autoLoadEntities: true,
-        ssl: true,
+        subscribers: [ActivitySubscriber],
+
+        /*   ssl: true,
         extra: {
           ssl: {
             rejectUnauthorized: false,
           },
         },
+        */
       }),
     }),
     TimetableModule,

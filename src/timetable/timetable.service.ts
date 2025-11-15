@@ -17,6 +17,8 @@ import { Subject } from 'src/subjects/entity/subjects.entity';
 import { Tag } from 'src/tags/entity/tags.entity';
 import { Hour } from 'src/hour/entity/hour.entity';
 import { Day } from 'src/day/entity/day.entity';
+import { Group } from 'src/groups/entity/groups.entity';
+import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
 
 export class TimetableOverviewDto {
   id: number;
@@ -50,6 +52,10 @@ export class TimetableService {
     private readonly hourRepository: Repository<Hour>,
     @InjectRepository(Day)
     private readonly dayRepository: Repository<Day>,
+    @InjectRepository(Group)
+    private readonly GroupRepository: Repository<Group>,
+    @InjectRepository(SubGroup)
+    private readonly SubGroupRepository: Repository<SubGroup>,
   ) {}
 
   async create(createTimetableDto: CreateTimetableDto, userId: number) {
@@ -131,6 +137,8 @@ export class TimetableService {
       buildings,
       activities,
       years,
+      groups,
+      subgroups,
     ] = await Promise.all([
       // Simple collections (fast)
       this.dayRepository.find({
@@ -172,9 +180,12 @@ export class TimetableService {
 
       this.yearRepository.find({
         where: { timetable: { id } },
-        relations: {
-          groups: { subGroups: true },
-        },
+      }),
+      this.GroupRepository.find({
+        where: { timetable: { id } },
+      }),
+      this.SubGroupRepository.find({
+        where: { timetable: { id } },
       }),
     ]);
 
@@ -187,6 +198,8 @@ export class TimetableService {
     timetable.buildings = buildings;
     timetable.activities = activities;
     timetable.years = years;
+    timetable.groups = groups;
+    timetable.subGroups = subgroups;
 
     return timetable;
   }

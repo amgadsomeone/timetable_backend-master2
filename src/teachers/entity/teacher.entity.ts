@@ -33,12 +33,15 @@ export class Teacher {
   })
   longName: string;
 
+  @Column({ type: 'integer', default: 0 })
+  assigned_hours: number;
+
   @ManyToMany(() => Subject)
   @JoinTable()
   qualifiedSubjects: Subject[];
 
   @Column({
-    nullable: true, 
+    nullable: true,
   })
   targetHours: number;
 
