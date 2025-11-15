@@ -53,13 +53,12 @@ import { ActivitySubscriber } from './activities/activity.subscriber';
         autoLoadEntities: true,
         subscribers: [ActivitySubscriber],
 
-        /*   ssl: true,
+        ssl: true,
         extra: {
           ssl: {
             rejectUnauthorized: false,
           },
         },
-        */
       }),
     }),
     TimetableModule,
