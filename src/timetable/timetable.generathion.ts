@@ -24,11 +24,7 @@ export class TimetableGenerationService {
     private readonly configService: ConfigService, // Inject ConfigService
   ) {}
 
-  async generateAndZip(
-    timetableId: number,
-    userId: number,
-    res: Response,
-  ): Promise<void> {
+  async generateAndZip(timetableId: number, userId: number, res: Response) {
     console.time('test');
     const fullTimetable = await this.timetablesService.findFull(
       timetableId,
@@ -52,6 +48,74 @@ export class TimetableGenerationService {
     const totalHourPerWeek =
       fullTimetable.hours.length * fullTimetable.days.length;
 
+    const teachermap = new Map<number, number>();
+    const yearMap = new Map<number, number>();
+    const groupMap = new Map<number, number>();
+    const subgroupMap = new Map<number, number>();
+
+    const teachernames = new Map<number, string>();
+    const yearNames = new Map<number, string>();
+    const groupNames = new Map<number, string>();
+    const subgroupNames = new Map<number, string>();
+
+    const errorstoSend: string[] = [];
+    fullTimetable.activities.forEach((activity) => {
+      activity.teachers.forEach((teacher) => {
+        const hours = teachermap.get(teacher.id) || 0;
+        teachernames.set(teacher.id, teacher.name);
+        teachermap.set(teacher.id, hours + activity.duration);
+      });
+      activity.years.forEach((year) => {
+        const hours = yearMap.get(year.id) || 0;
+        yearNames.set(year.id, year.name);
+        yearMap.set(year.id, hours + activity.duration);
+      });
+      activity.groups.forEach((group) => {
+        const hours = groupMap.get(group.id) || 0;
+        groupNames.set(group.id, group.name);
+        groupMap.set(group.id, hours + activity.duration);
+      });
+      activity.subGroups.forEach((subgroup) => {
+        const hours = subgroupMap.get(subgroup.id) || 0;
+        subgroupNames.set(subgroup.id, subgroup.name);
+        subgroupMap.set(subgroup.id, hours + activity.duration);
+      });
+    });
+    teachermap.forEach((value, key) => {
+      if (value > totalHourPerWeek) {
+        errorstoSend.push(
+          `teacher with name ${teachernames.get(key)} is overscheduled with ${value} hours (limit is ${totalHourPerWeek}) hours per weak. `,
+        );
+      }
+    });
+    yearMap.forEach((value, key) => {
+      if (value > totalHourPerWeek) {
+        errorstoSend.push(
+          `year with name ${yearNames.get(key)} is overscheduled with ${value} hours (limit is ${totalHourPerWeek}) hours per weak. `,
+        );
+      }
+    });
+    groupMap.forEach((value, key) => {
+      if (value > totalHourPerWeek) {
+        errorstoSend.push(
+          `group with name ${groupNames.get(key)} is overscheduled with ${value} hours (limit is ${totalHourPerWeek}) hours per weak. `,
+        );
+      }
+    });
+    subgroupMap.forEach((value, key) => {
+      if (value > totalHourPerWeek) {
+        errorstoSend.push(
+          `subgroup with name ${subgroupNames.get(key)} is overscheduled with ${value} hours (limit is ${totalHourPerWeek}) hours per weak. `,
+        );
+      }
+    });
+    if (errorstoSend.length > 0) {
+      return res.status(400).json({
+        statusCode: 400,
+        message: errorstoSend,
+      });
+    }
+    /*
     const errors: string[] = [];
     fullTimetable.teachers.forEach((teacher) => {
       if (teacher.assigned_hours > totalHourPerWeek) {
@@ -88,7 +152,7 @@ export class TimetableGenerationService {
     if (errors.length > 0) {
       throw new BadRequestException(errors.join('\n'));
     }
-
+    */
     const uniqueId = `timetable-${timetableId}-${Date.now()}`;
     const tempDir = os.tmpdir();
     const operationDir = path.join(tempDir, uniqueId); // A single directory for all temp files
