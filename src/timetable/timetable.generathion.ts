@@ -15,7 +15,6 @@ import { JSDOM } from 'jsdom';
 import { ConfigService } from '@nestjs/config'; // Import ConfigService
 import type { Response } from 'express';
 import archiver = require('archiver');
-import { Year } from 'src/years/entity/years.entity';
 
 @Injectable()
 export class TimetableGenerationService {
@@ -52,6 +51,7 @@ export class TimetableGenerationService {
     }
     const totalHourPerWeek =
       fullTimetable.hours.length * fullTimetable.days.length;
+
     const errors: string[] = [];
     fullTimetable.teachers.forEach((teacher) => {
       if (teacher.assigned_hours > totalHourPerWeek) {

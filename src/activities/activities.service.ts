@@ -3,8 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, QueryFailedError } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { Repository, In, QueryFailedError, DataSource } from 'typeorm';
 import { Activity } from './entity/activities.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { Teacher } from 'src/teachers/entity/teacher.entity';
@@ -36,6 +36,8 @@ export class ActivitiesService {
     private readonly tagRepository: Repository<Tag>,
     @InjectRepository(Subject)
     private readonly subjectRepository: Repository<Subject>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   async findByTimetable(timetableId: number, userId: number) {
@@ -197,6 +199,9 @@ export class ActivitiesService {
     userId: number,
     dto: UpdateActivityDto,
   ) {
+    await myDataSource.manager.transaction(
+      async (transactionalEntityManager) => {},
+    );
     const existing = await this.activityRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
       relations: { timetable: { hours: true } },
@@ -209,66 +214,37 @@ export class ActivitiesService {
       );
     }
 
-    if ((dto as any).subjectId) {
-      const subject = await this.subjectRepository.findOne({
-        where: {
-          id: (dto as any).subjectId,
-          timetable: { id: timetableId },
-        },
-      });
-      if (!subject)
-        throw new BadRequestException('Subject not found in timetable');
-      existing.subject = { id: (dto as any).subjectId } as any;
+    const payload: any = {
+      id,
+      duration: dto.duration,
+      subject: dto.subjectId ? { id: dto.subjectId } : undefined,
+      teachers: dto.teachers?.map((id) => ({ id })),
+      years: dto.years?.map((id) => ({ id })),
+      groups: dto.groups?.map((id) => ({ id })),
+      subGroups: dto.subGroups?.map((id) => ({ id })),
+      tags: dto.tags?.map((id) => ({ id })),
+    };
+
+    const updated = await this.activityRepository.preload(payload);
+    if (!updated) throw new NotFoundException();
+    console.timeEnd('helloagain');
+
+    try {
+      return await this.activityRepository.save(updated);
+    } catch (error) {
+      if (error instanceof QueryFailedError && error.driverError?.code) {
+        if (error.driverError.code === '23503') {
+          throw new BadRequestException(
+            `Invalid data provided. One of the IDs for subject, teacher, year, group, sub-group, or tag does not exist in the specified timetable.`,
+          );
+        }
+      }
+      throw error;
     }
-
-    if (dto.teachers)
-      existing.teachers = await this.validateIdsInTimetable(
-        this.teacherRepository,
-        dto.teachers || [],
-        timetableId,
-        'Teacher',
-        userId,
-      );
-
-    if (dto.years)
-      existing.years = await this.validateIdsInTimetable(
-        this.yearRepository,
-        dto.years || [],
-        timetableId,
-        'Year',
-        userId,
-      );
-    if (dto.groups)
-      existing.groups = await this.validateIdsInTimetable(
-        this.groupRepository,
-        dto.groups || [],
-        timetableId,
-        'Group',
-        userId,
-      );
-    if (dto.subGroups)
-      existing.subGroups = await this.validateIdsInTimetable(
-        this.subGroupRepository,
-        dto.subGroups || [],
-        timetableId,
-        'SubGroup',
-        userId,
-      );
-    if (dto.tags)
-      existing.tags = await this.validateIdsInTimetable(
-        this.tagRepository,
-        dto.tags || [],
-        timetableId,
-        'Tag',
-        userId,
-      );
-
-    Object.assign(existing, dto);
-    return this.activityRepository.save(existing);
   }
 
   async deleteOne(timetableId: number, id: number, userId: number) {
-    // this could resolve into cardisian exploding problem it gotta be fixed 
+    // this could resolve into cardisian exploding problem it gotta be fixed
     const activityToRemove = await this.activityRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
       relations: ['teachers', 'groups', 'subGroups', 'years'],

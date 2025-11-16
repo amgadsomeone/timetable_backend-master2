@@ -145,7 +145,7 @@ export class TeachersService {
   async findById(timetableId: number, id: number, userId: number) {
     return this.teacherRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
-      relations: { qualifiedSubjects: true },
+      relations: { activities:true },
     });
   }
 
