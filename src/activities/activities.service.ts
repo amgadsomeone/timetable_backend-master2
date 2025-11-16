@@ -199,38 +199,133 @@ export class ActivitiesService {
     userId: number,
     dto: UpdateActivityDto,
   ) {
-    await myDataSource.manager.transaction(
-      async (transactionalEntityManager) => {},
-    );
-    const existing = await this.activityRepository.findOne({
-      where: { id, timetable: { id: timetableId, User: { id: userId } } },
-      relations: { timetable: { hours: true } },
-    });
-    if (!existing) throw new NotFoundException();
-
-    if (dto.duration! > existing.timetable.hours.length) {
-      throw new BadRequestException(
-        `max duration for this timetable is ${existing.timetable.hours.length}`,
-      );
-    }
-
-    const payload: any = {
-      id,
-      duration: dto.duration,
-      subject: dto.subjectId ? { id: dto.subjectId } : undefined,
-      teachers: dto.teachers?.map((id) => ({ id })),
-      years: dto.years?.map((id) => ({ id })),
-      groups: dto.groups?.map((id) => ({ id })),
-      subGroups: dto.subGroups?.map((id) => ({ id })),
-      tags: dto.tags?.map((id) => ({ id })),
-    };
-
-    const updated = await this.activityRepository.preload(payload);
-    if (!updated) throw new NotFoundException();
-    console.timeEnd('helloagain');
-
+    let result;
     try {
-      return await this.activityRepository.save(updated);
+      result = await this.activityRepository.manager.transaction(
+        async (transactionManager) => {
+          const existing = await transactionManager.findOne(Activity, {
+            where: { id, timetable: { id: timetableId, User: { id: userId } } },
+            relations: {
+              timetable: { hours: true },
+              teachers: true,
+              years: true,
+              subGroups: true,
+              groups: true,
+            },
+          });
+          if (!existing) throw new NotFoundException();
+          if (dto.duration! > existing.timetable.hours.length) {
+            throw new BadRequestException(
+              `max duration for this timetable is ${existing.timetable.hours.length}`,
+            );
+          }
+
+          if (existing.teachers && existing.teachers.length > 0) {
+            const teacherIds = existing.teachers.map((teacher) => teacher.id);
+            await transactionManager
+              .getRepository(Teacher)
+              .decrement(
+                { id: In(teacherIds) },
+                'assigned_hours',
+                existing.duration,
+              );
+          }
+
+          // 2. Update Groups
+          if (existing.groups && existing.groups.length > 0) {
+            const groupIds = existing.groups.map((group) => group.id);
+            await transactionManager
+              .getRepository(Group)
+              .decrement(
+                { id: In(groupIds) },
+                'assigned_hours',
+                existing.duration,
+              );
+          }
+
+          // 2. Update subgroups
+          if (existing.subGroups && existing.subGroups.length > 0) {
+            const subgroupsIds = existing.subGroups.map(
+              (subGroup) => subGroup.id,
+            );
+            await transactionManager
+              .getRepository(SubGroup)
+              .decrement(
+                { id: In(subgroupsIds) },
+                'assigned_hours',
+                existing.duration,
+              );
+          }
+
+          if (existing.years && existing.years.length > 0) {
+            const yearIds = existing.years.map((year) => year.id);
+            await transactionManager
+              .getRepository(Year)
+              .decrement(
+                { id: In(yearIds) },
+                'assigned_hours',
+                existing.duration,
+              );
+          }
+
+          if (dto.teachers && dto.teachers.length > 0) {
+            await transactionManager
+              .getRepository(Teacher)
+              .increment(
+                { id: In(dto.teachers) },
+                'assigned_hours',
+                dto.duration || existing.duration,
+              );
+          }
+
+          // 2. Update Groups
+          if (dto.groups && dto.groups.length > 0) {
+            await transactionManager
+              .getRepository(Group)
+              .increment(
+                { id: In(dto.groups) },
+                'assigned_hours',
+                dto.duration || existing.duration,
+              );
+          }
+
+          // 2. Update subgroups
+          if (dto.subGroups && dto.subGroups.length > 0) {
+            await transactionManager
+              .getRepository(SubGroup)
+              .increment(
+                { id: In(dto.subGroups) },
+                'assigned_hours',
+                dto.duration || existing.duration,
+              );
+          }
+
+          // 3. Update Years
+          if (dto.years && dto.years.length > 0) {
+            await transactionManager
+              .getRepository(Year)
+              .increment(
+                { id: In(dto.years) },
+                'assigned_hours',
+                dto.duration || existing.duration,
+              );
+          }
+          const payload: any = {
+            id,
+            duration: dto.duration,
+            subject: dto.subjectId ? { id: dto.subjectId } : undefined,
+            teachers: dto.teachers?.map((id) => ({ id })),
+            years: dto.years?.map((id) => ({ id })),
+            groups: dto.groups?.map((id) => ({ id })),
+            subGroups: dto.subGroups?.map((id) => ({ id })),
+            tags: dto.tags?.map((id) => ({ id })),
+          };
+
+          const updated = await this.activityRepository.preload(payload);
+          if (!updated) throw new NotFoundException();
+          return await this.activityRepository.save(updated);
+        },
+      );
     } catch (error) {
       if (error instanceof QueryFailedError && error.driverError?.code) {
         if (error.driverError.code === '23503') {
@@ -241,6 +336,8 @@ export class ActivitiesService {
       }
       throw error;
     }
+
+    return result;
   }
 
   async deleteOne(timetableId: number, id: number, userId: number) {
