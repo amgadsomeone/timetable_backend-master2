@@ -23,6 +23,7 @@ export class DayService {
   async findDays(timeTableId: number, userId: number) {
     return this.dayRepository.find({
       where: { timetable: { id: timeTableId, User: { id: userId } } },
+      order:{id:'DESC'}
     });
   }
 

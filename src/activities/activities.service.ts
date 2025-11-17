@@ -16,6 +16,7 @@ import { Subject } from 'src/subjects/entity/subjects.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
+import { Hour } from 'src/hour/entity/hour.entity';
 
 @Injectable()
 export class ActivitiesService {
@@ -138,9 +139,9 @@ export class ActivitiesService {
     userId: number,
     dtos: CreateActivityDto[],
   ) {
-    const timetableExists = await this.timetableRepository.existsBy({
-      id: timetableId,
-      User: { id: userId },
+    const timetableExists = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+      relations: { hours: true },
     });
 
     if (!timetableExists) {
@@ -149,6 +150,13 @@ export class ActivitiesService {
       );
     }
 
+    dtos.forEach((dto) => {
+      if (dto.duration > timetableExists.hours.length) {
+        throw new BadRequestException(
+          `max durathion for this timetable is ${timetableExists.hours.length}`,
+        );
+      }
+    });
     // 2. Map DTOs to entities without any validation loops.
     // The structure is simple and fast.
     const entitiesToSave = dtos.map((activity) =>

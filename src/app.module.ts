@@ -51,15 +51,15 @@ import { ActivitySubscriber } from './activities/activity.subscriber';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
         autoLoadEntities: true,
-      //  subscribers: [ActivitySubscriber],
+        //  subscribers: [ActivitySubscriber],
 
-           ssl: true,
+        /*   ssl: true,
         extra: {
           ssl: {
             rejectUnauthorized: false,
           },
         },
-        
+        */
       }),
     }),
     TimetableModule,
