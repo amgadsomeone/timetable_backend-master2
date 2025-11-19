@@ -19,7 +19,6 @@ export class ActivitySubscriber implements EntitySubscriberInterface<Activity> {
   }
 
   async afterInsert(event: InsertEvent<Activity>) {
-    console.log('AFTER ACTIVITY INSERTED: ', event.entity);
     const { duration, years, groups, subGroups, teachers } = event.entity;
 
     // 1. Update Teachers
@@ -59,7 +58,6 @@ export class ActivitySubscriber implements EntitySubscriberInterface<Activity> {
 
   async afterRemove(event: RemoveEvent<Activity>) {
     // Note: event.entity is undefined on remove, you need the ID
-    console.log('AFTER ACTIVITY REMOVED: ', event.databaseEntity);
     const { duration, years, groups, subGroups, teachers } =
       event.databaseEntity;
     // 1. Update Teachers
@@ -98,28 +96,20 @@ export class ActivitySubscriber implements EntitySubscriberInterface<Activity> {
   }
 
   async beforeUpdate(event: UpdateEvent<Activity>) {
-    console.log('helloooooooooo')
-     console.log(event.databaseEntity)
   const oldActivitydf = await event.manager.findOne(Activity, {
     where: { id: event.entity!.id },
     relations: ['teachers', 'groups', 'subGroups', 'years']
   });
 
   if (!oldActivitydf) {
-    console.log('⚠️ Old activity not found');
     return;
   }  
-  console.log(event.entity!.teachers)
-    console.log(oldActivitydf!.teachers)  // We need both the old state and the new state to calculate the difference.
-  // We need both the old state and the new state to calculate the difference.
     const oldActivity = event.databaseEntity;
       
-    // Load the new activity with all relations
     const newActivity = await event.manager.findOne(Activity, {
       where: { id: oldActivity.id },
       relations: ['teachers', 'groups', 'subGroups', 'years'],
     });
-    console.log(newActivity)
 
     if (!newActivity) return;
 

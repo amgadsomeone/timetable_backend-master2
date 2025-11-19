@@ -23,6 +23,7 @@ export class TagsService {
   async findTags(timetableId: number, userId: number) {
     return this.tagRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
+      order: { id: 'DESC' },
     });
   }
 
@@ -81,37 +82,36 @@ export class TagsService {
     return await this.tagRepository.save(entity);
   }
 
-    async createMany(timetableId: number, userId: number, dtos: CreateTagDto[]) {
-      const timetable = await this.timetableRepository.findOne({
-        where: { id: timetableId, User: { id: userId } },
-        relations: { tags: true },
-        select: { id: true, User: { id: true }, tags: { name: true } },
-      });
-      if (!timetable) throw new NotFoundException();
-      const existingNames = new Set(timetable.tags.map((y) => y.name));
-      const incomingNames = new Set<string>();
-      dtos.forEach((dto) => {
-        if (existingNames.has(dto.name)) {
-          throw new BadRequestException(
-            `hour name ${dto.name} already exist in this timetable`,
-          );
-        }
-        if (incomingNames.has(dto.name)) {
-          throw new ConflictException(
-            `Duplicate name "${dto.name}" found in the request.`,
-          );
-        }
-        incomingNames.add(dto.name);
-      });
-      const entities = this.tagRepository.create(
-        dtos.map((dto) => ({
-          name: dto.name,
-          timetable: { id: timetableId },
-        })),
-      );
-      return this.tagRepository.save(entities);
-    }
-  
+  async createMany(timetableId: number, userId: number, dtos: CreateTagDto[]) {
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+      relations: { tags: true },
+      select: { id: true, User: { id: true }, tags: { name: true } },
+    });
+    if (!timetable) throw new NotFoundException();
+    const existingNames = new Set(timetable.tags.map((y) => y.name));
+    const incomingNames = new Set<string>();
+    dtos.forEach((dto) => {
+      if (existingNames.has(dto.name)) {
+        throw new BadRequestException(
+          `hour name ${dto.name} already exist in this timetable`,
+        );
+      }
+      if (incomingNames.has(dto.name)) {
+        throw new ConflictException(
+          `Duplicate name "${dto.name}" found in the request.`,
+        );
+      }
+      incomingNames.add(dto.name);
+    });
+    const entities = this.tagRepository.create(
+      dtos.map((dto) => ({
+        name: dto.name,
+        timetable: { id: timetableId },
+      })),
+    );
+    return this.tagRepository.save(entities);
+  }
 
   async findById(
     timetableId: number,

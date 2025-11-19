@@ -38,7 +38,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private clients = new Map<Socket, number>();
 
   async handleConnection(client: Socket) {
-    console.log("new connecthion attempt")
     const userId = await this.authenticateClient(client);
     if (!userId) {
       client.disconnect();
@@ -57,7 +56,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: { msg: string; chatId: number },
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(data)
     const userId = this.clients.get(client);
     if (!userId) return;
     this.AgentService.makeAgentcall(client, userId, data.chatId, data.msg);

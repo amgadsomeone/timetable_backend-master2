@@ -26,7 +26,7 @@ export class HourService {
   ): Promise<Hour[]> {
     return this.hourRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      order: { id: 'ASC' },
+      order: { id: 'DESC' },
     });
   }
   async findHoursPaginated(
@@ -101,7 +101,6 @@ export class HourService {
       select: { id: true, User: { id: true }, hours: { name: true } },
     });
     if (!timetable) throw new NotFoundException();
-    console.log(timetable);
     const existingHoursNames = new Set(timetable.hours.map((y) => y.name));
     const incomingNames = new Set<string>();
     dtos.forEach((hour) => {

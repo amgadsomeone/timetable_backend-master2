@@ -21,8 +21,9 @@ import { ChatModule } from './chat/chat.module';
 import { AgentModule } from './agent/agent.module';
 import { ClerkAuthGuard } from './auth/gurds/clerk-auth.guard';
 import { User } from './users/entity/users.entity';
-import { BullModule } from '@nestjs/bullmq';
-import { ActivitySubscriber } from './activities/activity.subscriber';
+import { CacheModule, CacheInterceptor } from '@nestjs/cache-manager';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -36,6 +37,19 @@ import { ActivitySubscriber } from './activities/activity.subscriber';
       }),
       inject: [ConfigService],
     }),*/
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 10,
+        },
+      ],
+    }),
+    /*
+    CacheModule.register({
+      ttl: 5000,
+    }),
+    */
     TypeOrmModule.forFeature([User]),
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync({
@@ -85,6 +99,15 @@ import { ActivitySubscriber } from './activities/activity.subscriber';
     {
       provide: 'APP_GUARD',
       useClass: ClerkAuthGuard,
+    },
+    /* {
+      provide: APP_INTERCEPTOR,
+      useClass: CacheInterceptor,
+    },
+    */
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
     },
   ],
 })

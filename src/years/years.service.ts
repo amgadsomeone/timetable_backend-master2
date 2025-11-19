@@ -30,7 +30,7 @@ export class YearsService {
   async findByTimetable(timetableId: number, userId: number) {
     return this.yearRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      relations: { groups: { subGroups: true } },
+      order: { id: 'DESC' },
     });
   }
 
@@ -80,6 +80,7 @@ export class YearsService {
       where: { id: timetableId, User: { id: userId } },
       relations: { years: true, groups: true, subGroups: true },
     });
+
     if (!timetable) throw new NotFoundException();
 
     const existingYearNames = new Set(timetable.years.map((y) => y.name));

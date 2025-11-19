@@ -69,6 +69,7 @@ export class TimetableService {
   async findAll(userId: number): Promise<Timetable[]> {
     return this.timetableRepository.find({
       where: { User: { id: userId } },
+      order:{id:'DESC'}
     });
   }
   async findTimetablesPaginated(

@@ -52,12 +52,14 @@ export class ActivitiesService {
         subject: true,
         tags: true,
       },
+      order:{id:"DESC"}
     });
   }
 
   async FindActivityAi(timetableId: number, userId: number) {
     return this.activityRepository.findAndCount({
       where: { timetable: { id: timetableId, User: { id: userId } } },
+      order: { id: 'DESC' },
     });
   }
 

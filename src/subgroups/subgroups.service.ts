@@ -31,6 +31,7 @@ export class SubgroupsService {
     return this.subGroupRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
       relations: { group: true },
+      order: { id: 'DESC' },
     });
   }
 
@@ -170,7 +171,6 @@ export class SubgroupsService {
     return this.subGroupRepository.save(entities);
   }
 
-  
   async findById(timetableId: number, id: number, userId: number) {
     const e = await this.subGroupRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },

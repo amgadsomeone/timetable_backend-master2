@@ -124,15 +124,12 @@ export class TimetableController {
       throw new NotFoundException('Timetable not found');
     }
     console.timeEnd('databaseQuery');
-    console.log(
-      `Timetable object loaded. Number of activities: ${fullTimetable.activities.length}`,
-    );
+
 
     console.time('xmlGeneration');
 
     const xmlContent = this.fetExportService.generateFetXml(fullTimetable);
     console.timeEnd('xmlGeneration');
-    console.log(`XML generation complete. String length: ${xmlContent.length}`);
 
     res.header('Content-Type', 'application/xml');
     res.header(

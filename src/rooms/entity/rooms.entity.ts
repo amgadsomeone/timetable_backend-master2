@@ -22,6 +22,7 @@ export class Room {
   @Column({
     type: 'integer',
     default: 30000,
+    nullable:true
   })
   capacity: number;
 

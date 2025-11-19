@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import compression from 'compression';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,7 +13,11 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
-  app.enableCors(); // Enables CORS for all origins
+  app.enableCors();
+  app.use(compression());
+  app.use(helmet());
+
+
 
   const config = new DocumentBuilder()
     .setTitle('My App')

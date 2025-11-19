@@ -24,7 +24,7 @@ export class BuildingsService {
   async findByTimetable(timetableId: number, userId: number) {
     return this.buildingRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      relations: { rooms: true },
+      order: { id: 'DESC' },
     });
   }
 

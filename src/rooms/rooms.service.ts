@@ -28,6 +28,7 @@ export class RoomsService {
         timetable: { id: timetable, User: { id: userId } },
       },
       relations: { building: true },
+      order: { id: 'DESC' },
     });
   }
 

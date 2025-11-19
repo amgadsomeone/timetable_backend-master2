@@ -30,7 +30,9 @@ export class GroupsService {
   async findByTimetable(timetableId: number, userId: number) {
     return this.groupRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      relations: { subGroups: true, year: true },
+      relations: { 
+         year: true },
+      order: { id: 'DESC' },
     });
   }
 

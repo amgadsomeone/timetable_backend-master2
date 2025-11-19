@@ -177,9 +177,6 @@ export class TimetableGenerationService {
 
       // The 'finish' event on the response is the correct and reliable way to know when to cleanup.
       res.on('finish', () => {
-        console.log(
-          `Response finished. Cleaning up directory: ${operationDir}`,
-        );
         fs.rm(operationDir, { recursive: true, force: true }).catch(
           console.error,
         );
@@ -221,7 +218,6 @@ export class TimetableGenerationService {
       `--inputfile=${inputPath}`,
       `--outputdir=${outputPath}`,
     ];
-    console.log(`Spawning command: ${fetExecutable} ${commandArgs.join(' ')}`);
 
     return new Promise((resolve, reject) => {
       const process = spawn(fetExecutable, commandArgs);
@@ -229,9 +225,7 @@ export class TimetableGenerationService {
       let stderr = '';
 
       // The server remains responsive while listening to these streams
-      process.stdout.on('data', (data) =>
-        console.log(`fet-cl stdout: ${data}`),
-      );
+ 
       process.stderr.on('data', (data) => {
         console.error(`fet-cl stderr: ${data}`);
         stderr += data.toString();
@@ -239,7 +233,6 @@ export class TimetableGenerationService {
 
       process.on('close', (code) => {
         if (code === 0) {
-          console.log('FET process completed successfully.');
           resolve();
         } else {
           reject(

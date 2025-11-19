@@ -32,7 +32,6 @@ export class ChatController {
   }
   @Get(':id/messages')
   findMessages(@Param('id') id: string, @GetUserId() userId: number) {
-    console.log(id)
     return this.chatService.findMessages(userId, +id);
   }
 

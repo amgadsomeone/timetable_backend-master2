@@ -26,6 +26,7 @@ export class SubjectsService {
   async findSubjects(timetableId: number, userId: number) {
     return this.subjectRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
+      order: { id: 'DESC' },
     });
   }
 
@@ -60,37 +61,40 @@ export class SubjectsService {
     };
   }
 
-    async createMany(timetableId: number, userId: number, dtos: CreateSubjectDto[]) {
-      const timetable = await this.timetableRepository.findOne({
-        where: { id: timetableId, User: { id: userId } },
-        relations: { subjects: true },
-        select: { id: true, User: { id: true }, subjects: { name: true } },
-      });
-      if (!timetable) throw new NotFoundException();
-      const existingNames = new Set(timetable.subjects.map((y) => y.name));
-      const incomingNames = new Set<string>();
-      dtos.forEach((dto) => {
-        if (existingNames.has(dto.name)) {
-          throw new BadRequestException(
-            `hour name ${dto.name} already exist in this timetable`,
-          );
-        }
-        if (incomingNames.has(dto.name)) {
-          throw new ConflictException(
-            `Duplicate name "${dto.name}" found in the request.`,
-          );
-        }
-        incomingNames.add(dto.name);
-      });
-      const entities = this.subjectRepository.create(
-        dtos.map((dto) => ({
-          name: dto.name,
-          timetable: { id: timetableId },
-        })),
-      );
-      return this.subjectRepository.save(entities);
-    }
-  
+  async createMany(
+    timetableId: number,
+    userId: number,
+    dtos: CreateSubjectDto[],
+  ) {
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+      relations: { subjects: true },
+      select: { id: true, User: { id: true }, subjects: { name: true } },
+    });
+    if (!timetable) throw new NotFoundException();
+    const existingNames = new Set(timetable.subjects.map((y) => y.name));
+    const incomingNames = new Set<string>();
+    dtos.forEach((dto) => {
+      if (existingNames.has(dto.name)) {
+        throw new BadRequestException(
+          `hour name ${dto.name} already exist in this timetable`,
+        );
+      }
+      if (incomingNames.has(dto.name)) {
+        throw new ConflictException(
+          `Duplicate name "${dto.name}" found in the request.`,
+        );
+      }
+      incomingNames.add(dto.name);
+    });
+    const entities = this.subjectRepository.create(
+      dtos.map((dto) => ({
+        name: dto.name,
+        timetable: { id: timetableId },
+      })),
+    );
+    return this.subjectRepository.save(entities);
+  }
 
   async createOne(
     timetableId: number,

@@ -25,7 +25,7 @@ export class TeachersService {
   async findTeachers(timetableId: number, userId: number) {
     return this.teacherRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      relations: { qualifiedSubjects: true },
+      order: { id: 'DESC' },
     });
   }
   async findTeachersPaginated(
@@ -111,7 +111,11 @@ export class TeachersService {
     return saved as Teacher;
   }
 
-  async createMany(timetableId: number, userId: number, dtos: CreateTeacherDto[]) {
+  async createMany(
+    timetableId: number,
+    userId: number,
+    dtos: CreateTeacherDto[],
+  ) {
     const timetable = await this.timetableRepository.findOne({
       where: { id: timetableId, User: { id: userId } },
       relations: { teachers: true },
@@ -145,7 +149,7 @@ export class TeachersService {
   async findById(timetableId: number, id: number, userId: number) {
     return this.teacherRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
-      relations: { activities:true },
+      relations: { activities: true },
     });
   }
 
