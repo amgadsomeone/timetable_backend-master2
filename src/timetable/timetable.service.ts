@@ -69,7 +69,7 @@ export class TimetableService {
   async findAll(userId: number): Promise<Timetable[]> {
     return this.timetableRepository.find({
       where: { User: { id: userId } },
-      order:{id:'DESC'}
+      order: { id: 'DESC' },
     });
   }
   async findTimetablesPaginated(
@@ -118,7 +118,7 @@ export class TimetableService {
   }
 
   // timetables.service.ts
-  async findFull(id: number, userId: number): Promise<Timetable> {
+  async findFull2(id: number, userId: number): Promise<Timetable> {
     // Query 1: Get ONLY the timetable base entity (no relations)
     const timetable = await this.timetableRepository.findOne({
       where: { id: id, User: { id: userId } },
@@ -127,7 +127,7 @@ export class TimetableService {
     if (!timetable) {
       throw new NotFoundException('timetable was not found');
     }
-
+    // THIS WAS ALL A WASTE OF TIME THERE WAS ALREADY AN OPTHION TO SOLVE THIS
     // Query 2-9: Load each collection separately in parallel
     const [
       days,
@@ -167,17 +167,18 @@ export class TimetableService {
         relations: { rooms: true },
       }),
 
-      // Complex collections with their own relations
-      this.activityRepository
-        .createQueryBuilder('activity')
-        .leftJoinAndSelect('activity.subject', 'subject')
-        .leftJoinAndSelect('activity.teachers', 'teachers')
-        .leftJoinAndSelect('activity.tags', 'tags')
-        .leftJoinAndSelect('activity.groups', 'groups')
-        .leftJoinAndSelect('activity.subGroups', 'subGroups')
-        .leftJoinAndSelect('activity.years', 'activityYears')
-        .where('activity.timetableId = :id', { id })
-        .getMany(),
+      this.activityRepository.find({
+        where: { timetable: { id } },
+        relations: {
+          subject: true,
+          teachers: true,
+          tags: true,
+          groups: true,
+          subGroups: true,
+          years: true,
+        },
+        relationLoadStrategy: 'query',
+      }),
 
       this.yearRepository.find({
         where: { timetable: { id } },
@@ -204,6 +205,40 @@ export class TimetableService {
 
     return timetable;
   }
+
+  async findFull(id: number, userId: number): Promise<Timetable> {
+  const timetable = await this.timetableRepository.findOne({
+    where: { id: id, User: { id: userId } },
+    relations: {
+      // Simple relations
+      days: true,
+      hours: true,
+      tags: true,
+      subjects: true,
+      teachers: true,
+      buildings: { rooms: true }, // Nested relation
+      years: true,
+      groups: true,
+      subGroups: true,
+      
+      // The "Dangerous" one is now safe!
+      activities: {
+        subject: true,
+        teachers: true,
+        tags: true,
+        groups: true,
+        subGroups: true,
+        years: true,
+      }
+    },
+    // THIS ONE LINE DOES THE MAGIC
+    relationLoadStrategy: 'query', 
+  });
+
+  if (!timetable) throw new NotFoundException();
+
+  return timetable;
+}
 
   async findOverviewWithQueryBuilder(
     id: number,

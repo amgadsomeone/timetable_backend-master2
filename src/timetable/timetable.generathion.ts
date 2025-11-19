@@ -26,7 +26,7 @@ export class TimetableGenerationService {
 
   async generateAndZip(timetableId: number, userId: number, res: Response) {
     console.time('test');
-    const fullTimetable = await this.timetablesService.findFull(
+    const fullTimetable = await this.timetablesService.findFull2(
       timetableId,
       userId,
     );

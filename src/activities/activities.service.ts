@@ -3,20 +3,13 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, QueryFailedError, DataSource } from 'typeorm';
 import { Activity } from './entity/activities.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
-import { Teacher } from 'src/teachers/entity/teacher.entity';
-import { Year } from 'src/years/entity/years.entity';
-import { Group } from 'src/groups/entity/groups.entity';
-import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
-import { Tag } from 'src/tags/entity/tags.entity';
-import { Subject } from 'src/subjects/entity/subjects.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
-import { Hour } from 'src/hour/entity/hour.entity';
 
 @Injectable()
 export class ActivitiesService {
@@ -45,6 +38,7 @@ export class ActivitiesService {
   async FindActivityAi(timetableId: number, userId: number) {
     return this.activityRepository.findAndCount({
       where: { timetable: { id: timetableId, User: { id: userId } } },
+      relations:{subject:true},
       order: { id: 'DESC' },
     });
   }
