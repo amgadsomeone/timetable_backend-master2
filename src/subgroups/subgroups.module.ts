@@ -6,9 +6,10 @@ import { Year } from 'src/years/entity/years.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { Group } from 'src/groups/entity/groups.entity';
 import { SubGroup } from './entity/subgroups.entity';
+import { YearsModule } from 'src/years/years.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Year, Timetable, Group, SubGroup])],
+  imports: [TypeOrmModule.forFeature([Year, Timetable, Group, SubGroup]),YearsModule],
   controllers: [SubgroupsController],
   providers: [SubgroupsService],
   exports: [SubgroupsService],

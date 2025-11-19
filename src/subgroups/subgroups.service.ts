@@ -11,20 +11,19 @@ import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { Group } from 'src/groups/entity/groups.entity';
 import { CreateSubGroupDto } from './dto/create-subgroup.dto';
 import { UpdateSubGroupDto } from './dto/update-subgroup.dto';
-import { Year } from 'src/years/entity/years.entity';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
+import { YearsService } from 'src/years/years.service';
 
 @Injectable()
 export class SubgroupsService {
   constructor(
-    @InjectRepository(Year)
-    private readonly yearRepository: Repository<Year>,
     @InjectRepository(Timetable)
     private readonly timetableRepository: Repository<Timetable>,
     @InjectRepository(Group)
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(SubGroup)
     private readonly subGroupRepository: Repository<SubGroup>,
+    private readonly yearService: YearsService,
   ) {}
 
   async findByTimetable(timetableId: number, userId: number) {
@@ -67,60 +66,10 @@ export class SubgroupsService {
   }
 
   async createOne(timetableId: number, userId: number, dto: CreateSubGroupDto) {
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: timetableId, User: { id: userId } },
-    });
-    if (!timetable) throw new NotFoundException();
-
-    // validate parent group exists and belongs to timetable
-    const group = await this.groupRepository.findOne({
-      where: {
-        id: dto.groupId,
-        timetable: { id: timetableId, User: { id: userId } },
-      },
-    });
-    if (!group)
-      throw new NotFoundException('Parent group not found in this timetable');
-
-    const yearExists = await this.yearRepository.find({
-      where: {
-        name: dto.name,
-        timetable: { id: timetableId, User: { id: userId } },
-      },
-    });
-    if (yearExists.length > 0) {
-      throw new BadRequestException(
-        `this time table has a already a year with this name: ${dto.name}`,
-      );
-    }
-    const groupExists = await this.groupRepository.find({
-      where: {
-        name: dto.name,
-        timetable: { id: timetableId, User: { id: userId } },
-      },
-    });
-    if (groupExists.length > 0)
-      throw new BadRequestException(
-        `this time table has a already a group with this name: ${dto.name}`,
-      );
-    const subGroupExists = await this.subGroupRepository.find({
-      where: {
-        name: dto.name,
-        timetable: { id: timetableId, User: { id: userId } },
-      },
-    });
-    if (subGroupExists.length > 0)
-      throw new BadRequestException(
-        `this time table has a already a subgroup with this name: ${dto.name}`,
-      );
-
-    const entity = this.subGroupRepository.create({
-      name: dto.name,
-      group: { id: dto.groupId } as any,
-      timetable: { id: timetableId } as any,
-    });
-    return this.subGroupRepository.save(entity);
+    const subGroup = await this.createMany(timetableId, userId, [dto]);
+    return subGroup[0];
   }
+
   async createMany(
     timetableId: number,
     userId: number,
@@ -128,33 +77,12 @@ export class SubgroupsService {
   ) {
     const timetable = await this.timetableRepository.findOne({
       where: { id: timetableId, User: { id: userId } },
-      relations: { years: true, groups: true, subGroups: true },
     });
     if (!timetable) throw new NotFoundException();
-
-    const existingYearNames = new Set(timetable.years.map((y) => y.name));
-    const existingGroupNames = new Set(timetable.groups.map((g) => g.name));
-    const existingSubGroupNames = new Set(
-      timetable.subGroups.map((sg) => sg.name),
-    );
+    
     const incomingNames = new Set<string>();
 
     dtos.forEach((yeardto) => {
-      if (existingYearNames.has(yeardto.name)) {
-        throw new BadRequestException(
-          `this time table has a already a year with this name: ${yeardto.name}`,
-        );
-      }
-      if (existingGroupNames.has(yeardto.name)) {
-        throw new BadRequestException(
-          `this time table has a already a group with this name: ${yeardto.name}`,
-        );
-      }
-      if (existingSubGroupNames.has(yeardto.name)) {
-        throw new BadRequestException(
-          `this time table has a already a subgroup with this name: ${yeardto.name}`,
-        );
-      }
       if (incomingNames.has(yeardto.name)) {
         throw new ConflictException(
           `Duplicate name "${yeardto.name}" found in the request.`,
@@ -162,9 +90,18 @@ export class SubgroupsService {
       }
       incomingNames.add(yeardto.name);
     });
+    const nameExists = await this.yearService.ValidateNamesExist(timetableId, [
+      ...incomingNames,
+    ]);
+    if (nameExists) {
+      throw new ConflictException(
+        `this name already exist in the database in years or groups or subgroups.`,
+      );
+    }
     const entities = this.subGroupRepository.create(
       dtos.map((dto) => ({
         name: dto.name,
+        group: { id: dto.groupId },
         timetable: { id: timetableId },
       })),
     );
@@ -203,37 +140,15 @@ export class SubgroupsService {
     }
 
     if (dto.name && dto.name !== existing.name) {
-      const yearExists = await this.yearRepository.find({
-        where: {
-          name: dto.name,
-          timetable: { id: timetableId, User: { id: userId } },
-        },
-      });
-      if (yearExists.length > 0) {
-        throw new BadRequestException(
-          `this time table has a already a year with this name: ${dto.name}`,
+      const nameExists = await this.yearService.ValidateNamesExist(
+        timetableId,
+        [dto.name],
+      );
+      if (nameExists) {
+        throw new ConflictException(
+          `this name already exist in the database in years or groups or subgroups.`,
         );
       }
-      const groupExists = await this.groupRepository.find({
-        where: {
-          name: dto.name,
-          timetable: { id: timetableId, User: { id: userId } },
-        },
-      });
-      if (groupExists.length > 0)
-        throw new BadRequestException(
-          `this time table has a already a group with this name: ${dto.name}`,
-        );
-      const subGroupExists = await this.subGroupRepository.find({
-        where: {
-          name: dto.name,
-          timetable: { id: timetableId, User: { id: userId } },
-        },
-      });
-      if (subGroupExists.length > 0)
-        throw new BadRequestException(
-          `this time table has a already a subgroup with this name: ${dto.name}`,
-        );
     }
 
     Object.assign(existing, dto);

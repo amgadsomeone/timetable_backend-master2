@@ -137,7 +137,7 @@ export class AgentTools {
             name: data.name,
             yearId: yearId,
           };
-          return await this.groupsService.createOne(timetableId, userId, dto);
+          return await this.groupsService.createone(timetableId, userId, dto);
         }
 
         case SimpleResourceType.Rooms: {
@@ -278,23 +278,17 @@ export class AgentTools {
     );
   }
 
-  // Assuming your DTOs are defined in their respective files, e.g.:
-  // export class CreateSubGroupDto { name: string; longName?: string; groupId: number; }
-  // export class CreateTeacherDto { name: string; longName?: string; }
-  // ... and so on for all other resource types.
-
   async modifySimpleResourceMany(
     type: SimpleResourceType,
     timetableId: number,
     userId: number,
-    data: { name: string; longname?: string }[], // Changed to accept an array
+    data: { name: string; longname?: string }[],
     buildingId?: number,
     yearId?: number,
     groupId?: number,
     capacity?: number,
   ) {
-    // The try...catch block is good for logging, then re-throwing the error
-    // so a NestJS global exception filter can handle the HTTP response.
+
     try {
       switch (type) {
         case SimpleResourceType.SubGroups: {
@@ -326,6 +320,7 @@ export class AgentTools {
             longName: item.longname, // Assuming CreateGroupDto also has longName
             yearId: yearId,
           }));
+          console.log(dtos)
           return await this.groupsService.createMany(timetableId, userId, dtos);
         }
 
@@ -337,13 +332,9 @@ export class AgentTools {
           }
           const dtos: CreateRoomDto[] = data.map((item) => ({
             name: item.name,
-            longName: item.longname,
-            capacity: capacity, // Apply optional capacity to all rooms
-            buildingId: buildingId, // Assuming this is part of the DTO
+            capacity: capacity, 
           }));
-          // Note: The service call should likely include the timetableId as well.
-          // Adjust if your service method signature is different.
-          return await this.roomsService.createMany(timetableId, userId, dtos);
+          return await this.roomsService.createMany(buildingId, userId, dtos);
         }
 
         case SimpleResourceType.Days: {

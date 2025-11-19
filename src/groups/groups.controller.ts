@@ -15,7 +15,6 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { GroupsService } from './groups.service';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
-import { GetUser } from 'src/auth/decorators/get-user.decorator';
 import { GetUserId } from 'src/auth/decorators/get-user-id.decorator';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 
@@ -41,7 +40,7 @@ export class GroupsController {
     @Body() dto: CreateGroupDto,
     @GetUserId() userId: number,
   ) {
-    return this.groupsService.createOne(timetableId, userId, dto);
+    return this.groupsService.createone(timetableId, userId, dto);
   }
 
   @Get(':timetableId/item/:id')

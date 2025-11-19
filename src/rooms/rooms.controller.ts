@@ -30,10 +30,7 @@ export class RoomsController {
     @GetUserId() userId: number,
     @Query() paginationDto: PaginationDto,
   ) {
-    return this.roomsService.findByTimetable(
-      TimetableId,
-      userId,
-    );
+    return this.roomsService.findByTimetable(TimetableId, userId);
   }
 
   @Post('building/:buildingId/item')
@@ -43,7 +40,7 @@ export class RoomsController {
     @Body() dto: CreateRoomDto,
     @GetUserId() userId: number,
   ) {
-    return this.roomsService.createOne(buildingId, userId, dto);
+    return this.roomsService.createMany(buildingId, userId, [dto]);
   }
 
   @Get('building/:buildingId/item/:id')

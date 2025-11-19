@@ -87,22 +87,17 @@ export class RoomsService {
   }
 
   async createMany(buildingId: number, userId: number, dtos: CreateRoomDto[]) {
-    const year = await this.buildingRepository.findOne({
+    const building = await this.buildingRepository.findOne({
       where: { id: buildingId, timetable: { User: { id: userId } } },
-      relations: { rooms: true },
-      select: {
-        id: true,
-        timetable: { User: { id: true } },
-        rooms: { name: true },
-      },
+      relations: { rooms: true, timetable: true },
     });
-    if (!year) throw new NotFoundException();
-    const existingNames = new Set(year.rooms.map((y) => y.name));
+    if (!building) throw new NotFoundException();
+    const existingNames = new Set(building.rooms.map((y) => y.name));
     const incomingNames = new Set<string>();
     dtos.forEach((dto) => {
       if (existingNames.has(dto.name)) {
         throw new BadRequestException(
-          `hour name ${dto.name} already exist in this timetable`,
+          `room name ${dto.name} already exist in this timetable`,
         );
       }
       if (incomingNames.has(dto.name)) {
@@ -116,8 +111,10 @@ export class RoomsService {
       dtos.map((dto) => ({
         name: dto.name,
         building: { id: buildingId },
+        timetable: { id: building.timetable.id },
       })),
     );
+    console.log(entities);
     return this.roomRepository.save(entities);
   }
 

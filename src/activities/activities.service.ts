@@ -25,20 +25,6 @@ export class ActivitiesService {
     private readonly activityRepository: Repository<Activity>,
     @InjectRepository(Timetable)
     private readonly timetableRepository: Repository<Timetable>,
-    @InjectRepository(Teacher)
-    private readonly teacherRepository: Repository<Teacher>,
-    @InjectRepository(Year)
-    private readonly yearRepository: Repository<Year>,
-    @InjectRepository(Group)
-    private readonly groupRepository: Repository<Group>,
-    @InjectRepository(SubGroup)
-    private readonly subGroupRepository: Repository<SubGroup>,
-    @InjectRepository(Tag)
-    private readonly tagRepository: Repository<Tag>,
-    @InjectRepository(Subject)
-    private readonly subjectRepository: Repository<Subject>,
-    @InjectDataSource()
-    private readonly dataSource: DataSource,
   ) {}
 
   async findByTimetable(timetableId: number, userId: number) {

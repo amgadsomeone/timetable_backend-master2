@@ -13,6 +13,7 @@ import { UpdateYearDto } from './dto/update-year.dto';
 import { Group } from 'src/groups/entity/groups.entity';
 import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
+import { In } from 'typeorm';
 
 @Injectable()
 export class YearsService {
@@ -66,46 +67,36 @@ export class YearsService {
   }
 
   async createOne(timetableId: number, userId: number, dto: CreateYearDto) {
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: timetableId, User: { id: userId } },
-    });
-    if (!timetable) throw new NotFoundException();
-
     const createdYear = await this.createMany(timetableId, userId, [dto]);
     return createdYear[0];
+  }
+
+  
+  async ValidateNamesExist(timetableId: number, names: string[]) {
+    const [years, groups, subgroups] = await Promise.all([
+      this.yearRepository.find({
+        where: { timetable: { id: timetableId }, name: In(names) },
+      }),
+      this.groupRepository.find({
+        where: { timetable: { id: timetableId }, name: In(names) },
+      }),
+      this.subgroupRepository.find({
+        where: { timetable: { id: timetableId }, name: In(names) },
+      }),
+    ]);
+    return years.length > 0 || groups.length > 0 || subgroups.length > 0;
   }
 
   async createMany(timetableId: number, userId: number, dtos: CreateYearDto[]) {
     const timetable = await this.timetableRepository.findOne({
       where: { id: timetableId, User: { id: userId } },
-      relations: { years: true, groups: true, subGroups: true },
     });
 
     if (!timetable) throw new NotFoundException();
 
-    const existingYearNames = new Set(timetable.years.map((y) => y.name));
-    const existingGroupNames = new Set(timetable.groups.map((g) => g.name));
-    const existingSubGroupNames = new Set(
-      timetable.subGroups.map((sg) => sg.name),
-    );
     const incomingNames = new Set<string>();
 
     dtos.forEach((yeardto) => {
-      if (existingYearNames.has(yeardto.name)) {
-        throw new BadRequestException(
-          `this time table has a already a year with this name: ${yeardto.name}`,
-        );
-      }
-      if (existingGroupNames.has(yeardto.name)) {
-        throw new BadRequestException(
-          `this time table has a already a group with this name: ${yeardto.name}`,
-        );
-      }
-      if (existingSubGroupNames.has(yeardto.name)) {
-        throw new BadRequestException(
-          `this time table has a already a subgroup with this name: ${yeardto.name}`,
-        );
-      }
       if (incomingNames.has(yeardto.name)) {
         throw new ConflictException(
           `Duplicate name "${yeardto.name}" found in the request.`,
@@ -113,6 +104,14 @@ export class YearsService {
       }
       incomingNames.add(yeardto.name);
     });
+    const nameExists = await this.ValidateNamesExist(timetableId, [
+      ...incomingNames,
+    ]);
+    if (nameExists) {
+      throw new ConflictException(
+        `this name already exist in the database in years or groups or subgroups.`,
+      );
+    }
     const entities = this.yearRepository.create(
       dtos.map((dto) => ({
         name: dto.name,
