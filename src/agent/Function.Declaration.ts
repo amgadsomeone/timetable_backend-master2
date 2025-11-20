@@ -1,4 +1,4 @@
-import { GoogleGenAI, FunctionDeclaration, Type } from '@google/genai';
+import {FunctionDeclaration, Type } from '@google/genai';
 
 export const getResources: FunctionDeclaration = {
   name: 'getResources',

@@ -77,18 +77,29 @@ export class SubgroupsService {
   ) {
     const timetable = await this.timetableRepository.findOne({
       where: { id: timetableId, User: { id: userId } },
+      relations: { groups: true },
+      select: { groups: { id: true }, id: true },
     });
-    if (!timetable) throw new NotFoundException();
-    
-    const incomingNames = new Set<string>();
-
-    dtos.forEach((yeardto) => {
-      if (incomingNames.has(yeardto.name)) {
-        throw new ConflictException(
-          `Duplicate name "${yeardto.name}" found in the request.`,
+    const groupsIds = new Set(timetable?.groups.map((group) => group.id) || []);
+    console.log(groupsIds)
+    dtos.forEach((dto) => {
+      if (!groupsIds.has(dto.groupId)) {
+        throw new BadRequestException(
+          `One or more group do not belong to this timetable.`,
         );
       }
-      incomingNames.add(yeardto.name);
+    });
+
+    if (!timetable) throw new NotFoundException();
+    const incomingNames = new Set<string>();
+
+    dtos.forEach((dto) => {
+      if (incomingNames.has(dto.name)) {
+        throw new ConflictException(
+          `Duplicate name "${dto.name}" found in the request.`,
+        );
+      }
+      incomingNames.add(dto.name);
     });
     const nameExists = await this.yearService.ValidateNamesExist(timetableId, [
       ...incomingNames,
@@ -134,9 +145,12 @@ export class SubgroupsService {
           timetable: { id: timetableId, User: { id: userId } },
         },
       });
-      if (!group)
+
+      if (!group) {
         throw new NotFoundException('Parent group not found in this timetable');
-      existing.group = { id: dto.groupId } as any;
+      }
+
+      existing.group = group;
     }
 
     if (dto.name && dto.name !== existing.name) {

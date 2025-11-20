@@ -81,18 +81,28 @@ export class GroupsService {
   ) {
     const timetable = await this.timetableRepository.findOne({
       where: { id: timetableId, User: { id: userId } },
+      relations: { years: true },
+      select: { years: { id: true }, id: true },
+    });
+    const yearIds = new Set(timetable?.years.map((year) => year.id) || []);
+    dtos.forEach((dto) => {
+      if (!yearIds.has(dto.yearId)) {
+        throw new BadRequestException(
+          `One or more year do not belong to this timetable.`,
+        );
+      }
     });
     if (!timetable) throw new NotFoundException();
 
     const incomingNames = new Set<string>();
 
-    dtos.forEach((yeardto) => {
-      if (incomingNames.has(yeardto.name)) {
+    dtos.forEach((dto) => {
+      if (incomingNames.has(dto.name)) {
         throw new ConflictException(
-          `Duplicate name "${yeardto.name}" found in the request.`,
+          `Duplicate name "${dto.name}" found in the request.`,
         );
       }
-      incomingNames.add(yeardto.name);
+      incomingNames.add(dto.name);
     });
     const nameExists = await this.yearService.ValidateNamesExist(timetableId, [
       ...incomingNames,
@@ -140,6 +150,8 @@ export class GroupsService {
       });
       if (!year)
         throw new NotFoundException('Parent year not found in this timetable');
+
+      existing.year = year;
     }
 
     if (dto.name && dto.name !== existing.name) {

@@ -135,14 +135,27 @@ export class RoomsService {
     userId: number,
     dto: UpdateRoomDto,
   ) {
+    console.log(buildingId)
     const existing = await this.roomRepository.findOne({
       where: {
         id,
-        building: { id: buildingId, timetable: { User: { id: userId } } },
+        timetable: { User: { id: userId } },
       },
+      relations: { building: true },
     });
 
     if (!existing) throw new NotFoundException();
+
+    if (buildingId != existing.building.id) {
+      const newBuilding = await this.buildingRepository.findOne({
+        where: {
+          id: buildingId,
+          timetable: { User: { id: userId } },
+        },
+      });
+      if (!newBuilding) throw new NotFoundException();
+      existing.building = newBuilding;
+    }
 
     if (dto.name && dto.name !== existing.name) {
       const conflict = await this.roomRepository.findOne({

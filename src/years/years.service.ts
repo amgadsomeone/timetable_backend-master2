@@ -71,20 +71,31 @@ export class YearsService {
     return createdYear[0];
   }
 
-  
   async ValidateNamesExist(timetableId: number, names: string[]) {
-    const [years, groups, subgroups] = await Promise.all([
-      this.yearRepository.find({
-        where: { timetable: { id: timetableId }, name: In(names) },
-      }),
-      this.groupRepository.find({
-        where: { timetable: { id: timetableId }, name: In(names) },
-      }),
-      this.subgroupRepository.find({
-        where: { timetable: { id: timetableId }, name: In(names) },
-      }),
-    ]);
-    return years.length > 0 || groups.length > 0 || subgroups.length > 0;
+    const namesExist = await this.timetableRepository.count({
+      relations: {
+        years: true,
+        groups: true,
+        subGroups: true,
+      },
+      where: [
+        {
+          id: timetableId,
+          years: { name: In(names) },
+        },
+        {
+          id: timetableId,
+          groups: { name: In(names) },
+        },
+        {
+          id: timetableId,
+          subGroups: { name: In(names) },
+        },
+      ],
+      relationLoadStrategy: 'query',
+    });
+    console.log(namesExist);
+    return namesExist > 0;
   }
 
   async createMany(timetableId: number, userId: number, dtos: CreateYearDto[]) {
@@ -104,9 +115,12 @@ export class YearsService {
       }
       incomingNames.add(yeardto.name);
     });
+    console.time('validatetest');
     const nameExists = await this.ValidateNamesExist(timetableId, [
       ...incomingNames,
     ]);
+    console.timeEnd('validatetest');
+
     if (nameExists) {
       throw new ConflictException(
         `this name already exist in the database in years or groups or subgroups.`,

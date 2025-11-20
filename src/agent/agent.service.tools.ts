@@ -61,7 +61,7 @@ export class AgentTools {
         results = await this.teachersService.findTeachers(timetableId, userId);
         break;
       case ResourceType.Activities:
-        results = await this.activitiesService.FindActivityAi(
+        results = await this.activitiesService.findByTimetable(
           timetableId,
           userId,
         );
