@@ -26,6 +26,7 @@ export class TeachersService {
     return this.teacherRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
       order: { id: 'DESC' },
+      select:{id:true,name:true,longName:true}
     });
   }
   async findTeachersPaginated(

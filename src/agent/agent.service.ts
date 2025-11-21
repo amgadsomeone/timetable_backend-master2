@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Injectable, Inject } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { ContentListUnion } from '@google/genai';
+import { encode } from '@toon-format/toon'
 
 import {
   createActivitiesMany,
@@ -45,7 +46,7 @@ export class AgentService {
     userMsg?: string,
     counter: number = 0,
   ) {
-    if (counter && counter > 10) {
+    if (counter && counter > 15) {
       client.emit('chaterror', {
         chatId: chatId,
         message: 'ai has been working for a while do you want to continue',
@@ -160,12 +161,14 @@ export class AgentService {
               break;
           }
         } catch (error) {
-          result = JSON.stringify(error);
+          result = encode(error)
         }
-        const stringifyResult = JSON.stringify(result);
+        console.log(result)
+        const ToonResult = encode(result);
+        console.log(ToonResult)
         const function_response_part = {
           name: tool_call.name,
-          response: { stringifyResult },
+          response: { ToonResult },
         };
 
         const functionResponse = {
