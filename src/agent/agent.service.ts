@@ -2,7 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { Injectable, Inject } from '@nestjs/common';
 import { Socket } from 'socket.io';
 import { ContentListUnion } from '@google/genai';
-import { encode } from '@toon-format/toon'
+import { encode } from '@toon-format/toon';
 
 import {
   createActivitiesMany,
@@ -98,10 +98,12 @@ export class AgentService {
         try {
           switch (tool_call.name) {
             case 'getResources':
-              result = await this.agentServiceTools.getResources(
-                tool_call.args.resourceType,
-                chat.timetable,
-                userId,
+              result = encode(
+                await this.agentServiceTools.getResources(
+                  tool_call.args.resourceType,
+                  chat.timetable,
+                  userId,
+                ),
               );
               break;
 
@@ -126,34 +128,41 @@ export class AgentService {
                 longname: resource.longName,
               }));
 
-              result = await this.agentServiceTools.modifySimpleResourceMany(
-                resourceType,
-                chat.timetable,
-                userId,
-                dataForService,
-                buildingId,
-                yearId,
-                groupId,
-                capacity,
+              result = JSON.stringify(
+                await this.agentServiceTools.modifySimpleResourceMany(
+                  resourceType,
+                  chat.timetable,
+                  userId,
+                  dataForService,
+                  buildingId,
+                  yearId,
+                  groupId,
+                  capacity,
+                ),
               );
               break;
 
             case 'removeResourceSingle':
-              result = await this.agentServiceTools.removeResourceSingle(
-                tool_call.args.type,
-                chat.timetable,
-                userId,
-                tool_call.args.resourceId,
+              result = JSON.stringify(
+                await this.agentServiceTools.removeResourceSingle(
+                  tool_call.args.type,
+                  chat.timetable,
+                  userId,
+                  tool_call.args.resourceId,
+                ),
               );
 
               break;
 
             case 'createActivities':
-              result = await this.agentServiceTools.createActivities(
-                chat.timetable,
-                tool_call.args.activities,
-                userId,
+              result = JSON.stringify(
+                await this.agentServiceTools.createActivities(
+                  chat.timetable,
+                  tool_call.args.activities,
+                  userId,
+                ),
               );
+
               break;
 
             default:
@@ -161,14 +170,13 @@ export class AgentService {
               break;
           }
         } catch (error) {
-          result = encode(error)
+          result = encode(error);
         }
-        console.log(result)
-        const ToonResult = encode(result);
-        console.log(ToonResult)
+
+        console.log(result);
         const function_response_part = {
           name: tool_call.name,
-          response: { ToonResult },
+          response: { result },
         };
 
         const functionResponse = {
@@ -201,7 +209,7 @@ export class AgentService {
     } catch (error) {
       if (error.status == 503) {
         this.makeAgentcall(client, userId, chatId, undefined, ++counter);
-        return
+        return;
       }
       client.emit('chaterror', { chatId: chatId, message: error });
       this.isActive.delete(chatId);
