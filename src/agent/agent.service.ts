@@ -69,6 +69,8 @@ export class AgentService {
         await this.ChatService.addMessage(userId, chatId, msg);
       }
       const chat = await this.ChatService.findChatById(userId, chatId);
+      console.log(`timetable is ${chat?.timetable}`);
+
       if (!chat) return;
       const content: ContentListUnion = chat.content;
 
@@ -170,9 +172,9 @@ export class AgentService {
               break;
           }
         } catch (error) {
-          result = encode(error);
+          result = JSON.stringify(error);
         }
-
+        console.log(tool_call.name);
         console.log(result);
         const function_response_part = {
           name: tool_call.name,

@@ -217,9 +217,8 @@ export class TimetableService {
       subjects: true,
       teachers: true,
       buildings: { rooms: true }, // Nested relation
-      years: true,
-      groups: true,
-      subGroups: true,
+      years: {groups:{subGroups:true}},
+
       
       // The "Dangerous" one is now safe!
       activities: {
