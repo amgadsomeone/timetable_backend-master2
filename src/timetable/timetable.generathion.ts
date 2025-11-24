@@ -15,7 +15,6 @@ import { JSDOM } from 'jsdom';
 import { ConfigService } from '@nestjs/config'; // Import ConfigService
 import type { Response } from 'express';
 import archiver = require('archiver');
-import process from 'process';
 
 @Injectable()
 export class TimetableGenerationService {
@@ -27,7 +26,7 @@ export class TimetableGenerationService {
 
   async generateAndZip(timetableId: number, userId: number, res: Response) {
     console.time('test');
-    const fullTimetable = await this.timetablesService.findFull2(
+    const fullTimetable = await this.timetablesService.findFull(
       timetableId,
       userId,
     );
@@ -214,30 +213,26 @@ export class TimetableGenerationService {
       );
     }
 
+    // Use spawn for non-blocking I/O streams
     const commandArgs = [
       `--inputfile=${inputPath}`,
       `--outputdir=${outputPath}`,
     ];
 
     return new Promise((resolve, reject) => {
-      const SPAWNprocess = spawn(fetExecutable, commandArgs, {
-        env: {
-          ...process.env,
-          LANG: 'C.UTF-8',
-          LC_ALL: 'C.UTF-8',
-        },
-      });
+      const process = spawn(fetExecutable, commandArgs);
 
       let stderr = '';
 
-
-      SPAWNprocess.stderr.on('data', (data) => {
+      // The server remains responsive while listening to these streams
+ 
+      process.stderr.on('data', (data) => {
         console.error(`fet-cl stderr: ${data}`);
         stderr += data.toString();
       });
 
-      SPAWNprocess.on('close', (code) => {
-        if (code === 0 || code === 1) {
+      process.on('close', (code) => {
+        if (code === 0) {
           resolve();
         } else {
           reject(
@@ -248,7 +243,7 @@ export class TimetableGenerationService {
         }
       });
 
-      SPAWNprocess.on('error', (err) => {
+      process.on('error', (err) => {
         reject(
           new Error(
             `Failed to start FET process. Make sure the path is correct. Error: ${err.message}`,

@@ -117,95 +117,7 @@ export class TimetableService {
     return timetable;
   }
 
-  // timetables.service.ts
-  async findFull2(id: number, userId: number): Promise<Timetable> {
-    // Query 1: Get ONLY the timetable base entity (no relations)
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: id, User: { id: userId } },
-    });
-
-    if (!timetable) {
-      throw new NotFoundException('timetable was not found');
-    }
-    // THIS WAS ALL A WASTE OF TIME THERE WAS ALREADY AN OPTHION TO SOLVE THIS
-    // Query 2-9: Load each collection separately in parallel
-    const [
-      days,
-      hours,
-      tags,
-      subjects,
-      teachers,
-      buildings,
-      activities,
-      years,
-      groups,
-      subgroups,
-    ] = await Promise.all([
-      // Simple collections (fast)
-      this.dayRepository.find({
-        where: { timetable: { id } },
-      }),
-
-      this.hourRepository.find({
-        where: { timetable: { id } },
-      }),
-
-      this.tagRepository.find({
-        where: { timetable: { id } },
-      }),
-
-      this.subjectRepository.find({
-        where: { timetable: { id } },
-      }),
-
-      this.teacherRepository.find({
-        where: { timetable: { id } },
-      }),
-
-      this.buildingRepository.find({
-        where: { timetable: { id } },
-        relations: { rooms: true },
-      }),
-
-      this.activityRepository.find({
-        where: { timetable: { id } },
-        relations: {
-          subject: true,
-          teachers: true,
-          tags: true,
-          groups: true,
-          subGroups: true,
-          years: true,
-        },
-        relationLoadStrategy: 'query',
-      }),
-
-      this.yearRepository.find({
-        where: { timetable: { id } },
-      }),
-      this.GroupRepository.find({
-        where: { timetable: { id } },
-      }),
-      this.SubGroupRepository.find({
-        where: { timetable: { id } },
-      }),
-    ]);
-
-    // Assign all relations to the timetable
-    timetable.days = days;
-    timetable.hours = hours;
-    timetable.tags = tags;
-    timetable.subjects = subjects;
-    timetable.teachers = teachers;
-    timetable.buildings = buildings;
-    timetable.activities = activities;
-    timetable.years = years;
-    timetable.groups = groups;
-    timetable.subGroups = subgroups;
-
-    return timetable;
-  }
-
+ 
   async findFull(id: number, userId: number): Promise<Timetable> {
   const timetable = await this.timetableRepository.findOne({
     where: { id: id, User: { id: userId } },
@@ -219,7 +131,6 @@ export class TimetableService {
       buildings: { rooms: true }, // Nested relation
       years: {groups:{subGroups:true}},
 
-      
       // The "Dangerous" one is now safe!
       activities: {
         subject: true,
