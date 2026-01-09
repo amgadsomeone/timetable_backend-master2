@@ -32,9 +32,10 @@ export class DayController {
     @GetUserId() userId: number,
     @Query() paginationDto: PaginationDto,
   ) {
-    return this.dayService.findDays(
+    return this.dayService.findDaysPaginated(
       timetableId,
       userId,
+      paginationDto
     );
   }
 
