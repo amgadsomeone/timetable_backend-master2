@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,7 +11,7 @@ import { Day } from './entity/day.entity';
 import { CreateDayDto } from './dto/create-day.dto';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
-
+import { In } from 'typeorm';
 @Injectable()
 export class DayService {
   constructor(
@@ -23,7 +24,7 @@ export class DayService {
   async findDays(timeTableId: number, userId: number) {
     return this.dayRepository.find({
       where: { timetable: { id: timeTableId, User: { id: userId } } },
-      order:{id:'DESC'}
+      order: { id: 'DESC' },
     });
   }
 
@@ -157,5 +158,56 @@ export class DayService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.dayRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some days were not found or you do not have permission to delete them',
+      );
+    }
+
+    const res = await this.dayRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateDayDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.dayRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some days were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((day) => {
+      const update = updates.find((u) => u.id === day.id);
+      if (update) {
+        if (update.data.name !== undefined) day.name = update.data.name;
+        if (update.data.longName !== undefined)
+          day.longName = update.data.longName;
+      }
+    });
+
+    const result = await this.dayRepository.save(toUpdate);
+    return result.length;
   }
 }

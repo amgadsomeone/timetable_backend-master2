@@ -3,6 +3,7 @@ import {
   ConflictException,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
@@ -165,5 +166,54 @@ export class HourService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.hourRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some hours were not found or you do not have permission to delete them',
+      );
+    }
+    
+    const res = await this.hourRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateHourDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.hourRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some hours were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((hour) => {
+      const update = updates.find((u) => u.id === hour.id);
+      if (update) {
+        if (update.data.name !== undefined) hour.name = update.data.name;
+      }
+    });
+
+    const result = await this.hourRepository.save(toUpdate);
+    return result.length;
   }
 }

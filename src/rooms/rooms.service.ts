@@ -3,9 +3,10 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Room } from './entity/rooms.entity';
 import { Building } from 'src/buildings/entity/buildings.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -114,7 +115,6 @@ export class RoomsService {
         timetable: { id: building.timetable.id },
       })),
     );
-    console.log(entities);
     return this.roomRepository.save(entities);
   }
 
@@ -177,5 +177,55 @@ export class RoomsService {
       building: { id: buildingId, timetable: { User: { id: userId } } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(buildingId: number, userId: number, ids: number[]) {
+    const toDelete = await this.roomRepository.find({
+      where: {
+        id: In(ids),
+        building: { id: buildingId, timetable: { User: { id: userId } } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some rooms were not found or you do not have permission to delete them',
+      );
+    }
+    
+    const res = await this.roomRepository.remove(toDelete);
+    return res.length;
+  }
+// well i dont know why i implemented this function in this way you cant even update the building id tf is this, wtf is going on with rooms service 
+  async updateMany(
+    userId: number,
+    updates: { id: number; data: Partial<CreateRoomDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.roomRepository.find({
+      where: {
+        id: In(ids),
+        building: { timetable: { User: { id: userId } } },
+      },
+      
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some rooms were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((room) => {
+      const update = updates.find((u) => u.id === room.id);
+      if (update) {
+        if (update.data.name !== undefined) room.name = update.data.name;
+        if (update.data.capacity !== undefined) room.capacity = update.data.capacity;
+      }
+    });
+
+    const result = await this.roomRepository.save(toUpdate);
+    return result.length;
   }
 }

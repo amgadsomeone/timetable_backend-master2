@@ -305,3 +305,4 @@ export const createResourceMany: FunctionDeclaration = {
     required: ['resourceType', 'resources'],
   },
 };
+

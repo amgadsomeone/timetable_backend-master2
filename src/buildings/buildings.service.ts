@@ -3,9 +3,10 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Building } from './entity/buildings.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { CreateBuildingDto } from './dto/create-building.dto';
@@ -161,5 +162,55 @@ export class BuildingsService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.buildingRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some buildings were not found or you do not have permission to delete them',
+      );
+    }
+    
+    const res = await this.buildingRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateBuildingDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.buildingRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some buildings were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((building) => {
+      const update = updates.find((u) => u.id === building.id);
+      if (update) {
+        if (update.data.name !== undefined) building.name = update.data.name;
+        if (update.data.longName !== undefined) building.longName = update.data.longName;
+      }
+    });
+
+    const result = await this.buildingRepository.save(toUpdate);
+    return result.length;
   }
 }

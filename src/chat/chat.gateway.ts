@@ -1,3 +1,5 @@
+/*
+
 import { clerkClient, getAuth, verifyToken } from '@clerk/express';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -91,3 +93,4 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 }
+*/

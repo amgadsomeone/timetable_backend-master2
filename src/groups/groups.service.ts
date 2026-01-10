@@ -3,9 +3,10 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Group } from './entity/groups.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { Year } from 'src/years/entity/years.entity';
@@ -176,5 +177,99 @@ export class GroupsService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.groupRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some groups were not found or you do not have permission to delete them',
+      );
+    }
+
+    const res = await this.groupRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateGroupDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.groupRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some groups were not found or you do not have permission to update them',
+      );
+    }
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+      relations: { years: true },
+      select: { years: { id: true }, id: true },
+    });
+    const yearIds = new Set(timetable?.years.map((year) => year.id) || []);
+    updates.forEach((dto) => {
+      if (dto.data.yearId !== undefined && !yearIds.has(dto.data.yearId)) {
+        throw new BadRequestException(
+          `One or more year do not belong to this timetable.`,
+        );
+      }
+    });
+
+    toUpdate.forEach((group) => {
+      const update = updates.find((u) => u.id === group.id);
+      if (update) {
+        if (update.data.name !== undefined) group.name = update.data.name;
+        if (update.data.yearId !== undefined)
+          group.year = { id: update.data.yearId } as Year;
+      }
+    });
+
+    const result = await this.groupRepository.save(toUpdate);
+    return result.length;
+  }
+
+  async getGroupWithRelations(id: number, userId: number) {
+    const group = await this.groupRepository.findOne({
+      where: { id, timetable: { User: { id: userId } } },
+      relations: {
+        activities: {
+          groups: true,
+          subGroups: true,
+          tags: true,
+          subject: true,
+          teachers: true,
+          years: true,
+        },
+      },
+      relationLoadStrategy: 'query',
+    });
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+    return group.activities.map((activity) => ({
+      id: activity.id,
+      duration: activity.duration,
+      subject: { name: activity.subject.name, id: activity.subject.id },
+      teachers: activity.teachers.map((t) => ({ name: t.name, id: t.id })),
+      years: activity.years.map((y) => ({ name: y.name, id: y.id })),
+      groups: activity.groups.map((g) => ({ name: g.name, id: g.id })),
+      subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
+      tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
+    }));
   }
 }

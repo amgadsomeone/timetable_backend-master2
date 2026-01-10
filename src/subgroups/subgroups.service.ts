@@ -3,9 +3,10 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { SubGroup } from './entity/subgroups.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { Group } from 'src/groups/entity/groups.entity';
@@ -81,7 +82,6 @@ export class SubgroupsService {
       select: { groups: { id: true }, id: true },
     });
     const groupsIds = new Set(timetable?.groups.map((group) => group.id) || []);
-    console.log(groupsIds)
     dtos.forEach((dto) => {
       if (!groupsIds.has(dto.groupId)) {
         throw new BadRequestException(
@@ -175,5 +175,99 @@ export class SubgroupsService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.subGroupRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some subgroups were not found or you do not have permission to delete them',
+      );
+    }
+
+    const res = await this.subGroupRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateSubGroupDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.subGroupRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some subgroups were not found or you do not have permission to update them',
+      );
+    }
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+      relations: { groups: true },
+      select: { groups: { id: true }, id: true },
+    });
+    const groupsIds = new Set(timetable?.groups.map((group) => group.id) || []);
+    updates.forEach((dto) => {
+      if (dto.data.groupId !== undefined && !groupsIds.has(dto.data.groupId)) {
+        throw new BadRequestException(
+          `One or more group do not belong to this timetable.`,
+        );
+      }
+    });
+
+    toUpdate.forEach((subgroup) => {
+      const update = updates.find((u) => u.id === subgroup.id);
+      if (update) {
+        if (update.data.name !== undefined) subgroup.name = update.data.name;
+        if (update.data.groupId !== undefined)
+          subgroup.group = { id: update.data.groupId } as Group;
+      }
+    });
+
+    const result = await this.subGroupRepository.save(toUpdate);
+    return result.length;
+  }
+
+  async getSubGroupWithRelations(id: number, userId: number) {
+    const subgroup = await this.subGroupRepository.findOne({
+      where: { id, timetable: { User: { id: userId } } },
+      relations: {
+        activities: {
+          groups: true,
+          subGroups: true,
+          tags: true,
+          subject: true,
+          teachers: true,
+          years: true,
+        },
+      },
+      relationLoadStrategy: 'query',
+    });
+    if (!subgroup) {
+      throw new NotFoundException('SubGroup not found');
+    }
+    return subgroup.activities.map((activity) => ({
+      id: activity.id,
+      duration: activity.duration,
+      subject: { name: activity.subject.name, id: activity.subject.id },
+      teachers: activity.teachers.map((t) => ({ name: t.name, id: t.id })),
+      years: activity.years.map((y) => ({ name: y.name, id: y.id })),
+      groups: activity.groups.map((g) => ({ name: g.name, id: g.id })),
+      subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
+      tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
+    }));
   }
 }

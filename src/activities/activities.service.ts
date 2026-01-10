@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository} from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Activity } from './entity/activities.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
@@ -202,6 +203,15 @@ export class ActivitiesService {
   async findById(timetableId: number, id: number, userId: number) {
     const e = await this.activityRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
+      relations: {
+        teachers: true,
+        groups: true,
+        subGroups: true,
+        years: true,
+        subject: true,
+        tags: true,
+      },
+      relationLoadStrategy: 'query',
     });
     if (!e) throw new NotFoundException();
     return e;
@@ -247,5 +257,107 @@ export class ActivitiesService {
 
     const res = await this.activityRepository.delete(id);
     return (res.affected ?? 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.activityRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some activities were not found or you do not have permission to delete them',
+      );
+    }
+
+    const res = await this.activityRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateActivityDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.activityRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some activities were not found or you do not have permission to update them',
+      );
+    }
+    await this.validateActivites(
+      timetableId,
+      userId,
+      updates.map((u) => u.data as CreateActivityDto),
+    );
+    toUpdate.forEach((activity) => {
+      const update = updates.find((u) => u.id === activity.id);
+      if (update) {
+        if (update.data.duration !== undefined)
+          activity.duration = update.data.duration;
+        if (update.data.subjectId !== undefined)
+          activity.subject = { id: update.data.subjectId } as any;
+        if (update.data.teachers !== undefined)
+          activity.teachers = update.data.teachers.map(
+            (id) => ({ id }) as any,
+          ) as any;
+        if (update.data.years !== undefined)
+          activity.years = update.data.years.map(
+            (id) => ({ id }) as any,
+          ) as any;
+        if (update.data.groups !== undefined)
+          activity.groups = update.data.groups.map(
+            (id) => ({ id }) as any,
+          ) as any;
+        if (update.data.subGroups !== undefined)
+          activity.subGroups = update.data.subGroups.map(
+            (id) => ({ id }) as any,
+          ) as any;
+        if (update.data.tags !== undefined)
+          activity.tags = update.data.tags.map((id) => ({ id }) as any) as any;
+      }
+    });
+
+    const result = await this.activityRepository.save(toUpdate as any);
+    return result.length;
+  }
+
+  async getActivityWithRelations(id: number, userId: number) {
+    const activity = await this.activityRepository.findOne({
+      where: { id, timetable: { User: { id: userId } } },
+      relations: {
+        groups: true,
+        subGroups: true,
+        tags: true,
+        subject: true,
+        teachers: true,
+        years: true,
+      },
+      relationLoadStrategy: 'query',
+    });
+    if (!activity) {
+      throw new NotFoundException('Activity not found');
+    }
+    return {
+      id: activity.id,
+      duration: activity.duration,
+      subject: { name: activity.subject.name, id: activity.subject.id },
+      teachers: activity.teachers.map((t) => ({ name: t.name, id: t.id })),
+      years: activity.years.map((y) => ({ name: y.name, id: y.id })),
+      groups: activity.groups.map((g) => ({ name: g.name, id: g.id })),
+      subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
+      tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
+    };
   }
 }

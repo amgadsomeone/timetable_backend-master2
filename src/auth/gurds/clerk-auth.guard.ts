@@ -48,6 +48,7 @@ export class ClerkAuthGuard implements CanActivate {
       request.user = user;
       return true;
     } catch (error) {
+      console.error('Clerk Authentication Error:', error);
       return false;
     }
   }

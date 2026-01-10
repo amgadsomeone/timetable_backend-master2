@@ -1,3 +1,4 @@
+/*
 import { forwardRef, Module } from '@nestjs/common';
 import { ChatGateway } from './chat.gateway';
 import { GoogleGenAI } from '@google/genai';
@@ -24,3 +25,4 @@ import { Timetable } from 'src/timetable/entity/timetable.entity';
   exports:[ChatService]
 })
 export class ChatModule {}
+*/

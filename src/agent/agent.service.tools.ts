@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { SubjectsService } from 'src/subjects/subjects.service';
 import { TeachersService } from 'src/teachers/teachers.service';
 import { ActivitiesService } from 'src/activities/activities.service';
@@ -11,13 +12,7 @@ import { RoomsService } from 'src/rooms/rooms.service';
 import { TagsService } from 'src/tags/tags.service';
 import { DayService } from 'src/day/day.service';
 import { HourService } from 'src/hour/hour.service';
-import {
-  addRecourse,
-  RemoveResource,
-  ResourceType,
-  SimpleResourceType,
-  UpdateResource,
-} from './types';
+import { ResourceType, SimpleResourceType } from './types';
 import { CreateActivityDto } from 'src/activities/dto/create-activity.dto';
 import { CreateGroupDto } from 'src/groups/dto/create-group.dto';
 import { CreateSubGroupDto } from 'src/subgroups/dto/create-subgroup.dto';
@@ -29,8 +24,27 @@ import { CreateRoomDto } from 'src/rooms/dto/create-room.dto';
 import { CreateSubjectDto } from 'src/subjects/dto/create-subject.dto';
 import { CreateYearDto } from 'src/years/dto/create-year.dto';
 import { CreateTagDto } from 'src/tags/dto/create-tag.dto';
+import { Parser } from 'json2csv';
+import { Teacher } from 'src/teachers/entity/teacher.entity';
+import { Activity } from 'src/activities/entity/activities.entity';
+import { Year } from 'src/years/entity/years.entity';
+import { Group } from 'src/groups/entity/groups.entity';
+import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
+import { Tag } from 'src/tags/entity/tags.entity';
+import { Subject } from 'src/subjects/entity/subjects.entity';
+
+export enum RelationEntityType {
+  Years = 'years',
+  Groups = 'groups',
+  SubGroups = 'subGroups',
+  Subjects = 'subjects',
+  Teachers = 'teachers',
+  Tags = 'tags',
+}
+
 @Injectable()
 export class AgentTools {
+  private parser: Parser;
   constructor(
     private readonly subjectsService: SubjectsService,
     private readonly teachersService: TeachersService,
@@ -43,222 +57,153 @@ export class AgentTools {
     private readonly buildingsService: BuildingsService,
     private readonly roomsService: RoomsService,
     private readonly tagsService: TagsService,
-    @Inject('gemini') private readonly ai: GoogleGenAI,
-  ) {}
+    private readonly dataSource: DataSource,
+  ) {
+    this.parser = new Parser({
+      delimiter: '|',
+      quote: '',
+    });
+  }
 
   async getResources(
     resourceType: ResourceType,
     timetableId: number,
     userId: number,
   ): Promise<string> {
-    let results: any[];
+    let data: any[];
 
     switch (resourceType) {
       case ResourceType.Subjects:
-        results = await this.subjectsService.findSubjects(timetableId, userId);
+        data = await this.subjectsService.findSubjects(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       case ResourceType.Teachers:
-        results = await this.teachersService.findTeachers(timetableId, userId);
-        break;
-      case ResourceType.Activities:
-        results = await this.activitiesService.findByTimetable(
-          timetableId,
-          userId,
-        );
+        data = await this.teachersService.findTeachers(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       case ResourceType.Days:
-        results = await this.daysService.findDays(timetableId, userId);
+        data = await this.daysService.findDays(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       case ResourceType.Hours:
-        results = await this.hoursService.findAllByTimetable(
-          timetableId,
-          userId,
-        );
+        data = await this.hoursService.findAllByTimetable(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       case ResourceType.Years:
-        results = await this.yearsService.findByTimetable(timetableId, userId);
+        data = await this.yearsService.findByTimetable(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       case ResourceType.Groups:
-        results = await this.groupsService.findByTimetable(timetableId, userId);
+        data = await this.groupsService.findByTimetable(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+          YearID: item.yearId,
+        }));
         break;
       case ResourceType.SubGroups:
-        results = await this.subgroupsService.findByTimetable(
-          timetableId,
-          userId,
-        );
+        data = await this.subgroupsService.findByTimetable(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+          GroupID: item.groupId,
+        }));
         break;
       case ResourceType.Buildings:
-        results = await this.buildingsService.findByTimetable(
-          timetableId,
-          userId,
-        );
+        data = await this.buildingsService.findByTimetable(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       case ResourceType.Rooms:
-        results = await this.roomsService.findByTimetable(timetableId, userId);
+        data = await this.roomsService.findByTimetable(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+          BuildingID: item.buildingId,
+        }));
         break;
       case ResourceType.Tags:
-        results = await this.tagsService.findTags(timetableId, userId);
+        data = await this.tagsService.findTags(timetableId, userId);
+        data = data.map((item) => ({
+          ID: item.id,
+          Name: item.name,
+        }));
         break;
       default:
         return `Error: Invalid resource type specified: '${resourceType}'.`;
     }
 
-    return JSON.stringify(results, null, 2);
+    return this.parser.parse(data);
   }
 
-  async modifySimpleResource(
-    type: SimpleResourceType,
-    timetableId: number,
-    userId: number,
-    data: { name: string; longname?: string },
-    buildingId?: number,
-    yearId?: number,
-    groupId?: number,
-    capacity?: number,
-  ) {
-    try {
-      switch (type) {
-        case SimpleResourceType.SubGroups: {
-          if (!groupId) return 'error groupId must exist to create subgroup';
-          const dto: CreateSubGroupDto = {
-            name: data.name,
-            groupId: groupId,
-          };
-          return await this.subgroupsService.createOne(
-            timetableId,
-            userId,
-            dto,
-          );
-        }
-
-        case SimpleResourceType.Groups: {
-          if (!yearId) return 'error yearId must exist to create group';
-          const dto: CreateGroupDto = {
-            name: data.name,
-            yearId: yearId,
-          };
-          return await this.groupsService.createone(timetableId, userId, dto);
-        }
-
-        case SimpleResourceType.Rooms: {
-          if (!buildingId) return 'error buildingId must exist to create room';
-          const dto: CreateRoomDto = {
-            name: data.name,
-            capacity: capacity,
-          };
-          return await this.roomsService.createOne(buildingId, userId, dto);
-        }
-
-        case SimpleResourceType.Days: {
-          const dto: CreateDayDto = {
-            name: data.name,
-            longName: data.longname,
-          };
-          return await this.daysService.createOne(timetableId, userId, dto);
-        }
-
-        case SimpleResourceType.Hours: {
-          const dto: CreateHourDto = {
-            name: data.name,
-            longName: data.longname,
-          };
-          return await this.hoursService.createOne(timetableId, userId, dto);
-        }
-
-        case SimpleResourceType.Subjects: {
-          const dto: CreateSubjectDto = {
-            name: data.name,
-            longName: data.longname,
-          };
-          return await this.subjectsService.createOne(timetableId, userId, dto);
-        }
-
-        case SimpleResourceType.Teachers: {
-          const dto: CreateTeacherDto = {
-            name: data.name,
-            longName: data.longname,
-          };
-          return await this.teachersService.createOne(timetableId, userId, dto);
-        }
-
-        case SimpleResourceType.Buildings: {
-          const dto: CreateBuildingDto = {
-            name: data.name,
-            longName: data.longname,
-          };
-          return await this.buildingsService.createOne(
-            timetableId,
-            userId,
-            dto,
-          );
-        }
-
-        case SimpleResourceType.Years: {
-          const dto: CreateYearDto = {
-            name: data.name,
-          };
-          return await this.yearsService.createOne(timetableId, userId, dto);
-        }
-
-        case SimpleResourceType.Tags: {
-          const dto: CreateTagDto = {
-            name: data.name,
-            longName: data.longname,
-          };
-          return await this.tagsService.createOne(timetableId, userId, dto);
-        }
-
-        default:
-          return `error: unknown resource type ${type}`;
-      }
-    } catch (error) {
-      return error;
-    }
-  }
-
-  removeResourceSingle(
+  removeResources(
     type: ResourceType,
     timetableId: number,
     userId: number,
-    resourceId: number,
+    resourceId: number[],
   ) {
-    // well delete does not need the timetable id but this is an ai slops
     switch (type) {
       case ResourceType.Days:
-        return this.daysService.deleteOne(timetableId, userId, resourceId);
+        return this.daysService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Hours:
-        return this.hoursService.deleteOne(timetableId, resourceId, userId);
+        return this.hoursService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Subjects:
-        return this.subjectsService.deleteOne(timetableId, resourceId, userId);
+        return this.subjectsService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Teachers:
-        return this.teachersService.deleteOne(timetableId, resourceId, userId);
+        return this.teachersService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Buildings:
-        return this.buildingsService.deleteOne(timetableId, resourceId, userId);
+        return this.buildingsService.deleteMany(
+          timetableId,
+          userId,
+          resourceId,
+        );
 
       case ResourceType.Rooms:
-        return this.roomsService.deleteOne(timetableId, resourceId, userId);
+        return this.roomsService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Years:
-        return this.yearsService.deleteOne(timetableId, resourceId, userId);
+        return this.yearsService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Groups:
-        return this.groupsService.deleteOne(timetableId, resourceId, userId);
+        return this.groupsService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.SubGroups:
-        return this.subgroupsService.deleteOne(timetableId, resourceId, userId);
+        return this.subgroupsService.deleteMany(
+          timetableId,
+          userId,
+          resourceId,
+        );
 
       case ResourceType.Tags:
-        return this.tagsService.deleteOne(timetableId, resourceId, userId);
+        return this.tagsService.deleteMany(timetableId, userId, resourceId);
 
       case ResourceType.Activities:
-        return this.activitiesService.deleteOne(
+        return this.activitiesService.deleteMany(
           timetableId,
-          resourceId,
+
           userId,
+          resourceId,
         );
 
       default:
@@ -278,20 +223,25 @@ export class AgentTools {
     );
   }
 
-  async modifySimpleResourceMany(
+  async CreateSimpleResourceMany(
     type: SimpleResourceType,
     timetableId: number,
     userId: number,
-    data: { name: string; longname?: string }[],
-    buildingId?: number,
-    yearId?: number,
-    groupId?: number,
-    capacity?: number,
-  ) {
-
+    data: {
+      name: string;
+      longname?: string;
+      buildingId?: number;
+      yearId?: number;
+      groupId?: number;
+      capacity?: number;
+    }[],
+  ): Promise<string> {
     try {
+      let result: any[];
+
       switch (type) {
         case SimpleResourceType.SubGroups: {
+          const groupId = data[0]?.groupId;
           if (!groupId) {
             throw new BadRequestException(
               'A groupId is required to create subgroups.',
@@ -300,16 +250,18 @@ export class AgentTools {
           const dtos: CreateSubGroupDto[] = data.map((item) => ({
             name: item.name,
             longName: item.longname,
-            groupId: groupId,
+            groupId: item.groupId || groupId,
           }));
-          return await this.subgroupsService.createMany(
+          result = await this.subgroupsService.createMany(
             timetableId,
             userId,
             dtos,
           );
+          break;
         }
 
         case SimpleResourceType.Groups: {
+          const yearId = data[0]?.yearId;
           if (!yearId) {
             throw new BadRequestException(
               'A yearId is required to create groups.',
@@ -317,24 +269,31 @@ export class AgentTools {
           }
           const dtos: CreateGroupDto[] = data.map((item) => ({
             name: item.name,
-            longName: item.longname, // Assuming CreateGroupDto also has longName
-            yearId: yearId,
+            longName: item.longname,
+            yearId: item.yearId || yearId,
           }));
-          console.log(dtos)
-          return await this.groupsService.createMany(timetableId, userId, dtos);
+          result = await this.groupsService.createMany(
+            timetableId,
+            userId,
+            dtos,
+          );
+          break;
         }
 
         case SimpleResourceType.Rooms: {
+          const buildingId = data[0]?.buildingId;
           if (!buildingId) {
             throw new BadRequestException(
               'A buildingId is required to create rooms.',
             );
           }
+          //room needs to be fixed later
           const dtos: CreateRoomDto[] = data.map((item) => ({
             name: item.name,
-            capacity: capacity, 
+            capacity: item.capacity,
           }));
-          return await this.roomsService.createMany(buildingId, userId, dtos);
+          result = await this.roomsService.createMany(buildingId, userId, dtos);
+          break;
         }
 
         case SimpleResourceType.Days: {
@@ -342,7 +301,8 @@ export class AgentTools {
             name: item.name,
             longName: item.longname,
           }));
-          return await this.daysService.createMany(timetableId, userId, dtos);
+          result = await this.daysService.createMany(timetableId, userId, dtos);
+          break;
         }
 
         case SimpleResourceType.Hours: {
@@ -350,7 +310,12 @@ export class AgentTools {
             name: item.name,
             longName: item.longname,
           }));
-          return await this.hoursService.createMany(timetableId, userId, dtos);
+          result = await this.hoursService.createMany(
+            timetableId,
+            userId,
+            dtos,
+          );
+          break;
         }
 
         case SimpleResourceType.Subjects: {
@@ -358,11 +323,12 @@ export class AgentTools {
             name: item.name,
             longName: item.longname,
           }));
-          return await this.subjectsService.createMany(
+          result = await this.subjectsService.createMany(
             timetableId,
             userId,
             dtos,
           );
+          break;
         }
 
         case SimpleResourceType.Teachers: {
@@ -370,11 +336,12 @@ export class AgentTools {
             name: item.name,
             longName: item.longname,
           }));
-          return await this.teachersService.createMany(
+          result = await this.teachersService.createMany(
             timetableId,
             userId,
             dtos,
           );
+          break;
         }
 
         case SimpleResourceType.Buildings: {
@@ -382,19 +349,25 @@ export class AgentTools {
             name: item.name,
             longName: item.longname,
           }));
-          return await this.buildingsService.createMany(
+          result = await this.buildingsService.createMany(
             timetableId,
             userId,
             dtos,
           );
+          break;
         }
 
         case SimpleResourceType.Years: {
           const dtos: CreateYearDto[] = data.map((item) => ({
             name: item.name,
-            longName: item.longname, // Assuming CreateYearDto can have longName
+            longName: item.longname,
           }));
-          return await this.yearsService.createMany(timetableId, userId, dtos);
+          result = await this.yearsService.createMany(
+            timetableId,
+            userId,
+            dtos,
+          );
+          break;
         }
 
         case SimpleResourceType.Tags: {
@@ -402,18 +375,327 @@ export class AgentTools {
             name: item.name,
             longName: item.longname,
           }));
-          return await this.tagsService.createMany(timetableId, userId, dtos);
+          result = await this.tagsService.createMany(timetableId, userId, dtos);
+          break;
         }
 
         default:
-          // This provides a clean error for unsupported or misspelled resource types.
           throw new BadRequestException(`Unsupported resource type: '${type}'`);
       }
+
+      // Format result with ID, Name, and parent ID if applicable
+      let formattedResult: any[];
+      switch (type) {
+        case SimpleResourceType.Groups:
+          formattedResult = result.map((item) => ({
+            ID: item.id,
+            Name: item.name,
+            YearID: item.yearId,
+          }));
+          break;
+        case SimpleResourceType.SubGroups:
+          formattedResult = result.map((item) => ({
+            ID: item.id,
+            Name: item.name,
+            GroupID: item.groupId,
+          }));
+          break;
+        case SimpleResourceType.Rooms:
+          formattedResult = result.map((item) => ({
+            ID: item.id,
+            Name: item.name,
+            BuildingID: item.buildingId,
+          }));
+          break;
+        default:
+          formattedResult = result.map((item) => ({
+            ID: item.id,
+            Name: item.name,
+          }));
+      }
+
+      return this.parser.parse(formattedResult);
     } catch (error) {
-      // Log the internal error for debugging.
       console.error(`Failed to create resources of type '${type}':`, error);
-      // Re-throw the error so NestJS can handle it and send a proper HTTP response.
       throw error;
+    }
+  }
+
+  async UpdateResource(
+    type: SimpleResourceType,
+    timetableId: number,
+    userId: number,
+    data: {
+      id: number;
+      name?: string;
+      longname?: string;
+      yearId?: number;
+      groupId?: number;
+    }[],
+  ) {
+    try {
+      switch (type) {
+        case SimpleResourceType.SubGroups: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+              groupId: item.groupId,
+            } as Partial<CreateSubGroupDto>,
+          }));
+          return await this.subgroupsService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Groups: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+              yearId: item.yearId,
+            } as Partial<CreateGroupDto>,
+          }));
+          return await this.groupsService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Rooms: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+            } as Partial<CreateRoomDto>,
+          }));
+          return await this.roomsService.updateMany(
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Days: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+            } as Partial<CreateDayDto>,
+          }));
+          return await this.daysService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Hours: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+            } as Partial<CreateHourDto>,
+          }));
+          return await this.hoursService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Subjects: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+            } as Partial<CreateSubjectDto>,
+          }));
+          return await this.subjectsService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Teachers: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+            } as Partial<CreateTeacherDto>,
+          }));
+          return await this.teachersService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Buildings: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+              longName: item.longname,
+            } as Partial<CreateBuildingDto>,
+          }));
+          return await this.buildingsService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Years: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+            } as Partial<CreateYearDto>,
+          }));
+          return await this.yearsService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        case SimpleResourceType.Tags: {
+          const updates = data.map((item) => ({
+            id: item.id,
+            data: {
+              name: item.name,
+            } as Partial<CreateTagDto>,
+          }));
+          return await this.tagsService.updateMany(
+            timetableId,
+            userId,
+            updates,
+          );
+        }
+
+        default:
+          throw new BadRequestException(`Unsupported resource type: ${type}`);
+      }
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to update resource: ${error.message}`,
+      );
+    }
+  }
+
+  async updateActivity(
+    timetableId: number,
+    userId: number,
+    updates: {
+      id: number;
+      data: Partial<CreateActivityDto>;
+    }[],
+  ) {
+    try {
+      return await this.activitiesService.updateMany(
+        timetableId,
+        userId,
+        updates,
+      );
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to update activities: ${error.message}`,
+      );
+    }
+  }
+
+  async getEntityWithRelations(
+    entityType: RelationEntityType,
+    entityId: number,
+    userId: number,
+  ): Promise<string> {
+    try {
+      let entityClass: any;
+      let relationPath: string;
+
+      // Map entity type to class and relation path
+      switch (entityType) {
+        case RelationEntityType.Years:
+          entityClass = Year;
+          relationPath = 'activities';
+          break;
+        case RelationEntityType.Groups:
+          entityClass = Group;
+          relationPath = 'activities';
+          break;
+        case RelationEntityType.SubGroups:
+          entityClass = SubGroup;
+          relationPath = 'activities';
+          break;
+        case RelationEntityType.Teachers:
+          entityClass = Teacher;
+          relationPath = 'activities';
+          break;
+        case RelationEntityType.Tags:
+          entityClass = Tag;
+          relationPath = 'activities';
+        case RelationEntityType.Subjects:
+          entityClass = Subject;
+          relationPath = 'activities';
+          break;
+        default:
+          throw new BadRequestException(
+            `Unsupported entity type: ${entityType}`,
+          );
+      }
+
+      const repo = this.dataSource.getRepository(entityClass);
+
+      const entity = await repo.findOne({
+        where: { id: entityId, timetable: { User: { id: userId } } },
+        relations: [
+          'activities',
+          'activities.subject',
+          'activities.teachers',
+          'activities.groups',
+          'activities.years',
+          'activities.subGroups',
+          'activities.tags',
+        ],
+        relationLoadStrategy: 'query',
+      });
+
+      if (!entity) {
+        throw new BadRequestException(
+          `${entityType} with ID ${entityId} not found`,
+        );
+      }
+
+      // Extract and format activities
+      const activities = (entity.activities as Activity[]) || [];
+      const formattedActivities = activities.map((activity) => ({
+        ActivityID: activity.id,
+        Subject: activity.subject?.name || '',
+        Teachers: activity.teachers?.map((t) => t.name).join(',') || '',
+        Groups: activity.groups?.map((g) => g.name).join(',') || '',
+        Years: activity.years?.map((y) => y.name).join(',') || '',
+        SubGroups: activity.subGroups?.map((sg) => sg.name).join(',') || '',
+        Tags: activity.tags?.map((tag) => tag.name).join(',') || '',
+        Duration: activity.duration || '',
+      }));
+
+      const res = this.parser.parse(formattedActivities);
+      console.log(res);
+      return res;
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to get entity relations: ${error.message}`,
+      );
     }
   }
 }

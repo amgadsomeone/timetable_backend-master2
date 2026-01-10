@@ -3,10 +3,10 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { In } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Subject } from './entity/subjects.entity';
 import { CreateSubjectDto } from './dto/create-subject.dto';
 import { UpdateSubjectDto } from './dto/update-subject.dto';
@@ -163,5 +163,55 @@ export class SubjectsService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.subjectRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some subjects were not found or you do not have permission to delete them',
+      );
+    }
+    
+    const res = await this.subjectRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateSubjectDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.subjectRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some subjects were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((subject) => {
+      const update = updates.find((u) => u.id === subject.id);
+      if (update) {
+        if (update.data.name !== undefined) subject.name = update.data.name;
+        if (update.data.longName !== undefined) subject.longName = update.data.longName;
+      }
+    });
+
+    const result = await this.subjectRepository.save(toUpdate);
+    return result.length;
   }
 }

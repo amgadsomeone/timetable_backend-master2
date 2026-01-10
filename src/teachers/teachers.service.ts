@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -13,6 +14,13 @@ import { Subject } from 'src/subjects/entity/subjects.entity';
 import { In } from 'typeorm';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
 
+export enum realthionships {
+  activities = 'activities',
+  classes = 'classes',
+  Teachers = 'Teachers',
+  Subjects = 'Subjects',
+  tags = 'tags',
+}
 @Injectable()
 export class TeachersService {
   constructor(
@@ -22,13 +30,15 @@ export class TeachersService {
     private readonly timetableRepository: Repository<Timetable>,
   ) {}
 
-  async findTeachers(timetableId: number, userId: number) {
+  async findTeachers(timetableId: number, userId: number): Promise<Teacher[]> {
     return this.teacherRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
       order: { id: 'DESC' },
-      select:{id:true,name:true,longName:true}
+      select: { id: true, name: true, longName: true },
     });
   }
+
+  
   async findTeachersPaginated(
     timeTableId: number,
     userId: number,
@@ -208,5 +218,92 @@ export class TeachersService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.teacherRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some teachers were not found or you do not have permission to delete them',
+      );
+    }
+
+    const res = await this.teacherRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateTeacherDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.teacherRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some teachers were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((teacher) => {
+      const update = updates.find((u) => u.id === teacher.id);
+      if (update) {
+        if (update.data.name !== undefined) teacher.name = update.data.name;
+        if (update.data.longName !== undefined)
+          teacher.longName = update.data.longName;
+        if (update.data.targetHours !== undefined)
+          teacher.targetHours = update.data.targetHours;
+        if (update.data.qualifiedSubjects !== undefined) {
+          (teacher as any).qualifiedSubjects =
+            update.data.qualifiedSubjects.map((id) => ({ id }));
+        }
+      }
+    });
+
+    const result = await this.teacherRepository.save(toUpdate as any);
+    return result.length;
+  }
+
+  async getTeacherWithRelations(id: number, userId: number) {
+    const teacher = await this.teacherRepository.findOne({
+      where: { id, timetable: { User: { id: userId } } },
+      relations: {
+        activities: {
+          groups: true,
+          subGroups: true,
+          tags: true,
+          subject: true,
+          teachers: true,
+          years: true,
+        },
+      },
+      relationLoadStrategy: 'query',
+    });
+    if (!teacher) {
+      throw new NotFoundException('Teacher not found');
+    }
+    return teacher.activities.map((activity) => ({
+      id: activity.id,
+      duration: activity.duration,
+      subject: { name: activity.subject.name, id: activity.subject.id },
+      teachers: activity.teachers.map((t) => ({ name: t.name, id: t.id })),
+      years: activity.years.map((y) => ({ name: y.name, id: y.id })),
+      groups: activity.groups.map((g) => ({ name: g.name, id: g.id })),
+      subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
+      tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
+    }));
   }
 }

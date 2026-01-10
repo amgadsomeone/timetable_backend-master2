@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -198,5 +199,84 @@ export class YearsService {
       timetable: { id: timetableId, User: { id: userId } },
     });
     return (res?.affected || 0) > 0;
+  }
+
+  async deleteMany(timetableId: number, userId: number, ids: number[]) {
+    const toDelete = await this.yearRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toDelete.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some years were not found or you do not have permission to delete them',
+      );
+    }
+    
+    const res = await this.yearRepository.remove(toDelete);
+    return res.length;
+  }
+
+  async updateMany(
+    timetableId: number,
+    userId: number,
+    updates: { id: number; data: Partial<CreateYearDto> }[],
+  ) {
+    const ids = updates.map((u) => u.id);
+
+    const toUpdate = await this.yearRepository.find({
+      where: {
+        id: In(ids),
+        timetable: { id: timetableId, User: { id: userId } },
+      },
+    });
+
+    if (toUpdate.length !== ids.length) {
+      throw new ForbiddenException(
+        'Some years were not found or you do not have permission to update them',
+      );
+    }
+
+    toUpdate.forEach((year) => {
+      const update = updates.find((u) => u.id === year.id);
+      if (update) {
+        if (update.data.name !== undefined) year.name = update.data.name;
+      }
+    });
+
+    const result = await this.yearRepository.save(toUpdate);
+    return result.length;
+  }
+
+  async getYearWithRelations(id: number, userId: number) {
+    const year = await this.yearRepository.findOne({
+      where: { id, timetable: { User: { id: userId } } },
+      relations: {
+        activities: {
+          groups: true,
+          subGroups: true,
+          tags: true,
+          subject: true,
+          teachers: true,
+          years: true,
+        },
+      },
+      relationLoadStrategy: 'query',
+    });
+    if (!year) {
+      throw new NotFoundException('Year not found');
+    }
+    return year.activities.map((activity) => ({
+      id: activity.id,
+      duration: activity.duration,
+      subject: { name: activity.subject.name, id: activity.subject.id },
+      teachers: activity.teachers.map((t) => ({ name: t.name, id: t.id })),
+      years: activity.years.map((y) => ({ name: y.name, id: y.id })),
+      groups: activity.groups.map((g) => ({ name: g.name, id: g.id })),
+      subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
+      tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
+    }));
   }
 }

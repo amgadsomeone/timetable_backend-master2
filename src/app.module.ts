@@ -17,7 +17,6 @@ import { UsersModule } from './users/users.module';
 import { DayModule } from './day/day.module';
 import { HourModule } from './hour/hour.module';
 import { ConstraintsModule } from './constraints/constraints.module';
-import { ChatModule } from './chat/chat.module';
 import { AgentModule } from './agent/agent.module';
 import { ClerkAuthGuard } from './auth/gurds/clerk-auth.guard';
 import { User } from './users/entity/users.entity';
@@ -90,7 +89,6 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
     DayModule,
     HourModule,
     ConstraintsModule,
-    ChatModule,
     AgentModule,
   ],
   controllers: [AppController],
