@@ -18,9 +18,12 @@ import { ConstraintsModule } from 'src/constraints/constraints.module';
 import { AgentTools } from './agent.service.tools';
 import { LangChainToolsService } from './langchain.tools';
 import { AiController } from './agent.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Threads } from './entity/threads.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([Threads]),
     ConfigModule,
     TimetableModule,
     SubjectsModule,
@@ -38,11 +41,7 @@ import { AiController } from './agent.controller';
     ConstraintsModule,
   ],
   controllers: [AiController],
-  providers: [
-    AgentService,
-    AgentTools,
-    LangChainToolsService
-  ],
-  exports: [AgentService,AgentTools],
+  providers: [AgentService, AgentTools, LangChainToolsService],
+  exports: [AgentService, AgentTools],
 })
 export class AgentModule {}

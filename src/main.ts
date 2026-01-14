@@ -14,7 +14,6 @@ async function bootstrap() {
     }),
   );
   app.enableCors();
-  app.use(compression());
   app.use(helmet());
 
 
