@@ -45,9 +45,10 @@ export class LangChainToolsService {
     );
 
     const createSimpleResourceMany = tool(
-      async (input, config: any) => {
-        const timetableId = config.configurable?.context?.timetableId;
-        const userId = config.configurable?.context?.userId;
+      async (input, config) => {
+        const timetableId = config?.context?.timetableId;
+        const userId = config?.context?.userId;
+        console.log(timetableId,userId)
         const results = await this.agentTools.CreateSimpleResourceMany(
           input.resourceType as SimpleResourceType,
           timetableId,

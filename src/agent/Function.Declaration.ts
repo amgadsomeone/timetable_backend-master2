@@ -1,5 +1,5 @@
 import {FunctionDeclaration, Type } from '@google/genai';
-
+// old tools
 export const getResources: FunctionDeclaration = {
   name: 'getResources',
   description:

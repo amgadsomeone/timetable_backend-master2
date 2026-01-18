@@ -4,9 +4,11 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import compression from 'compression';
 import helmet from 'helmet';
+import { json } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
@@ -16,7 +18,7 @@ async function bootstrap() {
   app.enableCors();
   app.use(helmet());
 
-
+  app.use(json({ limit: '10mb' }));
 
   const config = new DocumentBuilder()
     .setTitle('My App')

@@ -36,6 +36,20 @@ export class YearsService {
     });
   }
 
+  // should change this name 
+  async findWithRelations(timetableId: number, userId: number) {
+    return this.yearRepository.find({
+      where: { timetable: { id: timetableId, User: { id: userId } } },
+      order: { id: 'DESC' },
+      relations: {
+        groups: {
+          subGroups: true,
+        },
+      },
+      relationLoadStrategy: 'query',
+    });
+  }
+
   async findYearsPaginated(
     timeTableId: number,
     userId: number,
@@ -214,7 +228,7 @@ export class YearsService {
         'Some years were not found or you do not have permission to delete them',
       );
     }
-    
+
     const res = await this.yearRepository.remove(toDelete);
     return res.length;
   }

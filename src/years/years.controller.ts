@@ -25,16 +25,22 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 export class YearsController {
   constructor(private readonly yearsService: YearsService) {}
 
+  @Get('WithRelations:timetableId')
+  getWithRelations(
+    @Param('timetableId', ParseIntPipe) timetableId: number,
+    @GetUserId() userId: number,
+    @Query() paginationDto: PaginationDto,
+  ) {
+    return this.yearsService.findWithRelations(timetableId, userId);
+  }
+
   @Get(':timetableId')
   findByTimetable(
     @Param('timetableId', ParseIntPipe) timetableId: number,
     @GetUserId() userId: number,
     @Query() paginationDto: PaginationDto,
   ) {
-    return this.yearsService.findByTimetable(
-      timetableId,
-      userId,
-    );
+    return this.yearsService.findByTimetable(timetableId, userId);
   }
 
   @Post('timetable/:timetableId/item')

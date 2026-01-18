@@ -4,7 +4,7 @@ import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
 import { Teacher } from 'src/teachers/entity/teacher.entity';
 import { Year } from 'src/years/entity/years.entity';
 import { Entity, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
-
+// i dont know what is this 
 @Entity()
 export class SpaceConstraint {
   @PrimaryGeneratedColumn()

@@ -26,7 +26,6 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { FetExportService } from './fet.service';
-import { ClerkAuthGuard } from 'src/auth/gurds/clerk-auth.guard';
 import { GetUserId } from 'src/auth/decorators/get-user-id.decorator';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 
