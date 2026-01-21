@@ -56,7 +56,7 @@ export class TimetableService {
     private readonly GroupRepository: Repository<Group>,
     @InjectRepository(SubGroup)
     private readonly SubGroupRepository: Repository<SubGroup>,
-  ) {}
+  ) { }
 
   async create(createTimetableDto: CreateTimetableDto, userId: number) {
     const timetable = this.timetableRepository.create({
@@ -117,44 +117,43 @@ export class TimetableService {
     return timetable;
   }
 
- 
+
   async findFull(id: number, userId: number): Promise<Timetable> {
-  const timetable = await this.timetableRepository.findOne({
-    where: { id: id, User: { id: userId } },
-    relations: {
-      // Simple relations
-      days: true,
-      hours: true,
-      tags: true,
-      subjects: true,
-      teachers: true,
-      buildings: { rooms: true }, // Nested relation
-      years: {groups:{subGroups:true}},
-
-      // The "Dangerous" one is now safe!
-      activities: {
-        subject: true,
-        teachers: true,
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: id, User: { id: userId } },
+      relations: {
+        // Simple relations
+        days: true,
+        hours: true,
         tags: true,
-        groups: true,
-        subGroups: true,
-        years: true,
-      }
-    },
-    // THIS ONE LINE DOES THE MAGIC
-    relationLoadStrategy: 'query', 
-  });
+        subjects: true,
+        teachers: true,
+        buildings: { rooms: true }, // Nested relation
+        years: { groups: { subGroups: true } },
 
-  if (!timetable) throw new NotFoundException();
+        // The "Dangerous" one is now safe!
+        activities: {
+          subject: true,
+          teachers: true,
+          tags: true,
+          groups: true,
+          subGroups: true,
+          years: true,
+        }
+      },
+      // THIS ONE LINE DOES THE MAGIC
+      relationLoadStrategy: 'query',
+    });
 
-  return timetable;
-}
+    if (!timetable) throw new NotFoundException();
+
+    return timetable;
+  }
 
   async findOverviewWithQueryBuilder(
     id: number,
     userId: number,
   ): Promise<TimetableOverviewDto> {
-    // First, verify the user has access to this timetable. This is a crucial security step.
     const hasAccess = await this.timetableRepository.exists({
       where: { id: id, User: { id: userId } },
     });
@@ -165,19 +164,15 @@ export class TimetableService {
     // Now, build the main query.
     const result = await this.timetableRepository
       .createQueryBuilder('timetable')
-      // Select the base fields from the timetable
       .select('timetable.id', 'id')
-      .addSelect('timetable.InstitutionName', 'name') // Assuming you want to use InstitutionName
-
-      // --- CORRECTED SUBQUERIES ---
-      // Each subquery now correctly points to the foreign key on the respective table.
+      .addSelect('timetable.InstitutionName', 'name')
 
       .addSelect(
         (subQuery) =>
           subQuery
             .select('COUNT(*)')
-            .from('day', 'day') // Table alias 'day'
-            .where('day.timetableId = timetable.id'), // Correct foreign key
+            .from('day', 'day')
+            .where('day.timetableId = timetable.id'),
         'totalDays',
       )
       .addSelect(
@@ -212,31 +207,26 @@ export class TimetableService {
             .where('activity.timetableId = timetable.id'),
         'totalActivities',
       )
-      // You mentioned "classes", let's assume the entity is named "ClassGroup"
-      // or similar and the table is "class_group"
+
       .addSelect(
         (subQuery) =>
           subQuery
             .select('COUNT(*)')
-            .from('group', 'group_alias') // Assuming 'group' is the table for Classes/Groups
+            .from('group', 'group_alias')
             .where('group_alias.timetableId = timetable.id'),
-        'totalClasses', // Aliasing to 'totalClasses' as requested
+        'totalClasses',
       )
 
-      // The main WHERE clause to find the specific timetable by its ID
       .where('timetable.id = :id', { id })
-      // Use .getRawOne() because we are selecting custom fields
       .getRawOne();
 
     if (!result) {
-      // This case should be rare since we already checked for existence, but it's good practice.
       throw new NotFoundException('Timetable was not found.');
     }
 
-    // Parse the raw string results from the database into numbers
     return {
       id: result.id,
-      name: result.name, // Will contain the InstitutionName
+      name: result.name,
       totalDays: parseInt(result.totalDays, 10),
       totalHours: parseInt(result.totalHours, 10),
       totalSubjects: parseInt(result.totalSubjects, 10),
@@ -270,7 +260,7 @@ export class TimetableService {
    * will ensure all associated days and hours are also deleted.
    */
   async remove(id: number, userId: number): Promise<void> {
-    const timetable = await this.findOne(id, userId); // Ensures it exists before trying to delete
+    const timetable = await this.findOne(id, userId);
     await this.timetableRepository.remove(timetable);
   }
 }

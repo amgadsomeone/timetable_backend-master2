@@ -19,7 +19,7 @@ export class ActivitiesService {
     private readonly activityRepository: Repository<Activity>,
     @InjectRepository(Timetable)
     private readonly timetableRepository: Repository<Timetable>,
-  ) {}
+  ) { }
 
   async findByTimetable(timetableId: number, userId: number) {
     return this.activityRepository.find({
@@ -89,10 +89,11 @@ export class ActivitiesService {
     dto: CreateActivityDto,
   ): Promise<Activity> {
     const createdActivities = await this.createMany(timetableId, userId, [dto]);
+    console.log(createdActivities);
     return createdActivities[0];
   }
 
-  async validateActivites(
+  private async validateActivites(
     timetableId,
     userID: number,
     dtos: CreateActivityDto[],
@@ -197,7 +198,7 @@ export class ActivitiesService {
       }),
     );
 
-    return await this.activityRepository.save(entitiesToSave);
+    return this.activityRepository.save(entitiesToSave);
   }
 
   async findById(timetableId: number, id: number, userId: number) {

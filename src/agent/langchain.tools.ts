@@ -6,13 +6,13 @@ import { SimpleResourceType } from './types';
 
 @Injectable()
 export class LangChainToolsService {
-  constructor(private readonly agentTools: AgentTools) {}
+  constructor(private readonly agentTools: AgentTools) { }
 
   createTools() {
     const getResources = tool(
       async (input, config: any) => {
-        const timetableId = config.configurable?.context?.timetableId;
-        const userId = config.configurable?.context?.userId;
+        const timetableId = config?.context?.timetableId;
+        const userId = config?.context?.userId;
         const results = await this.agentTools.getResources(
           input.resourceType as any,
           timetableId,
@@ -48,7 +48,7 @@ export class LangChainToolsService {
       async (input, config) => {
         const timetableId = config?.context?.timetableId;
         const userId = config?.context?.userId;
-        console.log(timetableId,userId)
+        console.log(timetableId, userId)
         const results = await this.agentTools.CreateSimpleResourceMany(
           input.resourceType as SimpleResourceType,
           timetableId,
@@ -126,8 +126,8 @@ export class LangChainToolsService {
 
     const updateResources = tool(
       async (input, config: any) => {
-        const timetableId = config.configurable?.context?.timetableId;
-        const userId = config.configurable?.context?.userId;
+        const timetableId = config?.context?.timetableId;
+        const userId = config?.context?.userId;
         const result = await this.agentTools.UpdateResource(
           input.resourceType as SimpleResourceType,
           timetableId,
@@ -195,8 +195,8 @@ export class LangChainToolsService {
 
     const updateActivities = tool(
       async (input, config: any) => {
-        const timetableId = config.configurable?.context?.timetableId;
-        const userId = config.configurable?.context?.userId;
+        const timetableId = config?.context?.timetableId;
+        const userId = config?.context?.userId;
         const result = await this.agentTools.updateActivity(
           timetableId,
           userId,
@@ -261,7 +261,7 @@ export class LangChainToolsService {
 
     const getEntityWithRelations = tool(
       async (input, config: any) => {
-        const userId = config.configurable?.context?.userId;
+        const userId = config?.context?.userId;
         const result = await this.agentTools.getEntityWithRelations(
           input.entityType as any,
           input.entityId,
@@ -287,8 +287,8 @@ export class LangChainToolsService {
 
     const createActivities = tool(
       async (input, config: any) => {
-        const timetableId = config.configurable?.context?.timetableId;
-        const userId = config.configurable?.context?.userId;
+        const timetableId = config?.context?.timetableId;
+        const userId = config?.context?.userId;
         const results = await this.agentTools.createActivities(
           timetableId,
           input.activities,
@@ -342,8 +342,9 @@ export class LangChainToolsService {
 
     const deleteResources = tool(
       async (input, config: any) => {
-        const timetableId = config.configurable?.context?.timetableId;
-        const userId = config.configurable?.context?.userId;
+        const timetableId = config?.context?.timetableId;
+        const userId = config?.context?.userId;
+        console.dir(timetableId, userId)
         const result = await this.agentTools.removeResources(
           input.resourceType as any,
           timetableId,

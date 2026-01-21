@@ -20,6 +20,7 @@ import { Tag } from 'src/tags/entity/tags.entity';
 import { Building } from 'src/buildings/entity/buildings.entity';
 import { Day } from 'src/day/entity/day.entity';
 import { Hour } from 'src/hour/entity/hour.entity';
+import { AgentModule } from 'src/agent/agent.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { Hour } from 'src/hour/entity/hour.entity';
       Hour,
     ]),
     ConfigModule,
+    AgentModule
     /* BullModule.registerQueue({
       name: 'timetable-generation',
     }),
@@ -52,4 +54,4 @@ import { Hour } from 'src/hour/entity/hour.entity';
   ],
   exports: [TimetableService],
 })
-export class TimetableModule {}
+export class TimetableModule { }

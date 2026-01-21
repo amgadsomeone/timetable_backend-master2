@@ -9,7 +9,6 @@ import {
   ParseIntPipe,
   Res,
   NotFoundException,
-  UseGuards,
   Request,
   Query,
 } from '@nestjs/common';
@@ -28,6 +27,7 @@ import type { Response } from 'express';
 import { FetExportService } from './fet.service';
 import { GetUserId } from 'src/auth/decorators/get-user-id.decorator';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { AgentTools, RelationEntityType } from 'src/agent/agent.service.tools';
 
 @ApiTags('Timetable')
 @Controller('timetable')
@@ -36,11 +36,17 @@ export class TimetableController {
   constructor(
     private readonly timetableService: TimetableService,
     private readonly fetExportService: FetExportService,
-  ) {}
+    private readonly agentTools: AgentTools,
+  ) { }
 
   @Get('profile')
   getProfile(@Request() req) {
     return req.user;
+  }
+  @Get('test')
+  test(@GetUserId() userId: number,
+  ) {
+    return this.agentTools.getEntityWithRelations(RelationEntityType.Teachers, 435, userId);
   }
   @Post()
   @ApiOperation({ summary: 'Create a new timetable' })

@@ -1,5 +1,4 @@
 import { Activity } from 'src/activities/entity/activities.entity';
-import { SpaceConstraint } from 'src/constraints/entity/spaceConstraints/spaceConstrainsts.entity';
 import { MaxGapsPerWeekConstraint } from 'src/constraints/entity/timeConstraints/maxGapConstraints.entity';
 import { NotAvailableConstraint } from 'src/constraints/entity/timeConstraints/notavailableConstraints.entity';
 import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
@@ -47,9 +46,12 @@ export class Group {
   @OneToMany(() => NotAvailableConstraint, (constraint) => constraint.group)
   NotAvailableConstraints: NotAvailableConstraint[];
 
-  @OneToMany(() => SpaceConstraint, (constraint) => constraint.group)
-  spaceConstraints: SpaceConstraint[];
 
   @OneToOne(() => MaxGapsPerWeekConstraint, (constraint) => constraint.group)
   maxGapsPerWeek: MaxGapsPerWeekConstraint;
+
+  @Column({
+    nullable: true,
+  })
+  maxGapsPerDay?: number;
 }

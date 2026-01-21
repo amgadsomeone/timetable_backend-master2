@@ -11,7 +11,7 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { YearsService } from './years.service';
 import { CreateYearDto } from './dto/create-year.dto';
 import { UpdateYearDto } from './dto/update-year.dto';
@@ -23,7 +23,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 @Controller('years')
 @ApiBearerAuth('bearerAuth')
 export class YearsController {
-  constructor(private readonly yearsService: YearsService) {}
+  constructor(private readonly yearsService: YearsService) { }
 
   @Get('WithRelations:timetableId')
   getWithRelations(
@@ -82,3 +82,4 @@ export class YearsController {
     return this.yearsService.deleteOne(timetableId, id, userId);
   }
 }
+

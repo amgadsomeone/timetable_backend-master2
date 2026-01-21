@@ -150,6 +150,10 @@ export class AgentTools {
         return `Error: Invalid resource type specified: '${resourceType}'.`;
     }
 
+    if (data.length === 0) {
+      return `No ${resourceType} found.`;
+    }
+
     return this.parser.parse(data);
   }
 
@@ -211,16 +215,18 @@ export class AgentTools {
     }
   }
 
-  createActivities(
+  async createActivities(
     TimetableId: number,
     createActivites: CreateActivityDto[],
     userId: number,
   ) {
-    return this.activitiesService.createMany(
+    const result = await this.activitiesService.createMany(
       TimetableId,
       userId,
       createActivites,
     );
+
+    return result ? `Activities created successfully.` : result;
   }
 
   async CreateSimpleResourceMany(
@@ -412,6 +418,10 @@ export class AgentTools {
             ID: item.id,
             Name: item.name,
           }));
+      }
+
+      if (formattedResult.length === 0) {
+        return `No ${type} were created.`;
       }
 
       return this.parser.parse(formattedResult);
@@ -620,33 +630,44 @@ export class AgentTools {
     userId: number,
   ): Promise<string> {
     try {
-      let entityClass: any;
-      let relationPath: string;
+      let activities: any[];
 
-      // Map entity type to class and relation path
       switch (entityType) {
         case RelationEntityType.Years:
-          entityClass = Year;
-          relationPath = 'activities';
+          activities = await this.yearsService.getYearWithRelations(
+            entityId,
+            userId,
+          );
           break;
         case RelationEntityType.Groups:
-          entityClass = Group;
-          relationPath = 'activities';
+          activities = await this.groupsService.getGroupWithRelations(
+            entityId,
+            userId,
+          );
           break;
         case RelationEntityType.SubGroups:
-          entityClass = SubGroup;
-          relationPath = 'activities';
+          activities = await this.subgroupsService.getSubGroupWithRelations(
+            entityId,
+            userId,
+          );
           break;
         case RelationEntityType.Teachers:
-          entityClass = Teacher;
-          relationPath = 'activities';
+          activities = await this.teachersService.getTeacherWithRelations(
+            entityId,
+            userId,
+          );
           break;
         case RelationEntityType.Tags:
-          entityClass = Tag;
-          relationPath = 'activities';
+          activities = await this.tagsService.getTagWithRelations(
+            entityId,
+            userId,
+          );
+          break;
         case RelationEntityType.Subjects:
-          entityClass = Subject;
-          relationPath = 'activities';
+          activities = await this.subjectsService.getSubjectWithRelations(
+            entityId,
+            userId,
+          );
           break;
         default:
           throw new BadRequestException(
@@ -654,30 +675,10 @@ export class AgentTools {
           );
       }
 
-      const repo = this.dataSource.getRepository(entityClass);
-
-      const entity = await repo.findOne({
-        where: { id: entityId, timetable: { User: { id: userId } } },
-        relations: [
-          'activities',
-          'activities.subject',
-          'activities.teachers',
-          'activities.groups',
-          'activities.years',
-          'activities.subGroups',
-          'activities.tags',
-        ],
-        relationLoadStrategy: 'query',
-      });
-
-      if (!entity) {
-        throw new BadRequestException(
-          `${entityType} with ID ${entityId} not found`,
-        );
+      if (!activities || activities.length === 0) {
+        return `No activities found for this ${entityType}.`;
       }
-
-      // Extract and format activities
-      const activities = (entity.activities as Activity[]) || [];
+      console.log(activities);
       const formattedActivities = activities.map((activity) => ({
         ActivityID: activity.id,
         Subject: activity.subject?.name || '',
@@ -687,11 +688,10 @@ export class AgentTools {
         SubGroups: activity.subGroups?.map((sg) => sg.name).join(',') || '',
         Tags: activity.tags?.map((tag) => tag.name).join(',') || '',
         Duration: activity.duration || '',
+
       }));
 
-      const res = this.parser.parse(formattedActivities);
-      console.log(res);
-      return res;
+      return this.parser.parse(formattedActivities);
     } catch (error) {
       throw new BadRequestException(
         `Failed to get entity relations: ${error.message}`,

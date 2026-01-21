@@ -21,7 +21,7 @@ export class SubjectsService {
     private readonly subjectRepository: Repository<Subject>,
     @InjectRepository(Timetable)
     private readonly timetableRepository: Repository<Timetable>,
-  ) {}
+  ) { }
 
   async findSubjects(timetableId: number, userId: number) {
     return this.subjectRepository.find({
@@ -178,7 +178,7 @@ export class SubjectsService {
         'Some subjects were not found or you do not have permission to delete them',
       );
     }
-    
+
     const res = await this.subjectRepository.remove(toDelete);
     return res.length;
   }
@@ -213,5 +213,35 @@ export class SubjectsService {
 
     const result = await this.subjectRepository.save(toUpdate);
     return result.length;
+  }
+
+  async getSubjectWithRelations(id: number, userId: number) {
+    const subject = await this.subjectRepository.findOne({
+      where: { id, timetable: { User: { id: userId } } },
+      relations: {
+        activities: {
+          groups: true,
+          subGroups: true,
+          tags: true,
+          subject: true,
+          teachers: true,
+          years: true,
+        },
+      },
+      relationLoadStrategy: 'query',
+    });
+    if (!subject) {
+      throw new NotFoundException('Subject not found');
+    }
+    return subject.activities.map((activity) => ({
+      id: activity.id,
+      duration: activity.duration,
+      subject: { name: activity.subject.name, id: activity.subject.id },
+      teachers: activity.teachers.map((t) => ({ name: t.name, id: t.id })),
+      years: activity.years.map((y) => ({ name: y.name, id: y.id })),
+      groups: activity.groups.map((g) => ({ name: g.name, id: g.id })),
+      subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
+      tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
+    }));
   }
 }

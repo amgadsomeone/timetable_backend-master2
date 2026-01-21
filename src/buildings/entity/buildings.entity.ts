@@ -30,6 +30,7 @@ export class Building {
 
   @ManyToOne(() => Timetable, (timetable) => timetable.buildings, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   timetable: Timetable;
 }

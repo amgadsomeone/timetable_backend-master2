@@ -36,6 +36,7 @@ export class Subject {
 
   @ManyToOne(() => Timetable, (timetable) => timetable.subjects, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   timetable: Timetable;
 }

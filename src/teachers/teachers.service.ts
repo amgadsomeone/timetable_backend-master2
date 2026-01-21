@@ -28,9 +28,10 @@ export class TeachersService {
     private readonly teacherRepository: Repository<Teacher>,
     @InjectRepository(Timetable)
     private readonly timetableRepository: Repository<Timetable>,
-  ) {}
+  ) { }
 
   async findTeachers(timetableId: number, userId: number): Promise<Teacher[]> {
+    console.log(timetableId, userId);
     return this.teacherRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
       order: { id: 'DESC' },
@@ -38,7 +39,7 @@ export class TeachersService {
     });
   }
 
-  
+
   async findTeachersPaginated(
     timeTableId: number,
     userId: number,
@@ -307,3 +308,4 @@ export class TeachersService {
     }));
   }
 }
+

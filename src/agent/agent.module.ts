@@ -17,6 +17,7 @@ import { HourModule } from 'src/hour/hour.module';
 import { ConstraintsModule } from 'src/constraints/constraints.module';
 import { AgentTools } from './agent.service.tools';
 import { LangChainToolsService } from './langchain.tools';
+import { FileConversionService } from './file.conversion.service';
 import { AiController } from './agent.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Threads } from './entity/threads.entity';
@@ -25,7 +26,6 @@ import { Threads } from './entity/threads.entity';
   imports: [
     TypeOrmModule.forFeature([Threads]),
     ConfigModule,
-    TimetableModule,
     SubjectsModule,
     TagsModule,
     TeachersModule,
@@ -41,7 +41,13 @@ import { Threads } from './entity/threads.entity';
     ConstraintsModule,
   ],
   controllers: [AiController],
-  providers: [AgentService, AgentTools, LangChainToolsService],
-  exports: [AgentService, AgentTools],
+  providers: [
+    AgentService,
+    AgentTools,
+    LangChainToolsService,
+    FileConversionService,
+  ],
+  exports: [AgentService, AgentTools, FileConversionService],
 })
-export class AgentModule {}
+export class AgentModule { }
+

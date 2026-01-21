@@ -23,11 +23,11 @@ export class Timetable {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({nullable:false})
+  @Column({ nullable: false })
   InstitutionName: string;
 
-  @Column({nullable:true})
-  generatedTableUrl:string
+  @Column({ nullable: true })
+  generatedTableUrl: string
 
   @OneToMany(() => Day, (day) => day.timetable)
   days: Day[];

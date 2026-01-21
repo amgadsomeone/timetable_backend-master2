@@ -25,7 +25,7 @@ export class SubgroupsService {
     @InjectRepository(SubGroup)
     private readonly subGroupRepository: Repository<SubGroup>,
     private readonly yearService: YearsService,
-  ) {}
+  ) { }
 
   async findByTimetable(timetableId: number, userId: number) {
     return this.subGroupRepository.find({
@@ -271,3 +271,4 @@ export class SubgroupsService {
     }));
   }
 }
+

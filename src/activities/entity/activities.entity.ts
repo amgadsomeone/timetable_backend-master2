@@ -25,31 +25,32 @@ export class Activity {
   })
   duration: number;
 
-  @ManyToOne(() => Subject, { nullable: false, })
+  @ManyToOne(() => Subject, (subject) => subject.activities)
   subject: Subject;
 
-  @ManyToMany(() => Teacher, { nullable: true })
+  @ManyToMany(() => Teacher, (teacher) => teacher.activities)
   @JoinTable()
   teachers: Teacher[];
 
-  @ManyToMany(() => Year, { nullable: true })
+  @ManyToMany(() => Year, (year) => year.activities)
   @JoinTable()
   years: Year[];
 
-  @ManyToMany(() => Group, { nullable: true })
+  @ManyToMany(() => Group, (group) => group.activities)
   @JoinTable()
   groups: Group[];
 
-  @ManyToMany(() => SubGroup, { nullable: true })
+  @ManyToMany(() => SubGroup, (subGroup) => subGroup.activities)
   @JoinTable()
   subGroups: SubGroup[];
 
-  @ManyToMany(() => Tag, { nullable: true })
+  @ManyToMany(() => Tag, (tag) => tag.activities)
   @JoinTable()
   tags: Tag[];
 
   @ManyToOne(() => Timetable, (timetable) => timetable.activities, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   timetable: Timetable;
 }

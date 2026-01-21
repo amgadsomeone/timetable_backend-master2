@@ -6,10 +6,11 @@ import { TimetableGenerationService } from './timetable.generathion';
 import { GetUserId } from 'src/auth/decorators/get-user-id.decorator';
 import { ApiBearerAuth } from '@nestjs/swagger';
 
+// i dont need this to be separate
 @Controller('timetables/:id/generate')
 @ApiBearerAuth('bearerAuth') // Match the name from your setupSwagger function
 export class TimetableGenerationController {
-  constructor(private readonly generationService: TimetableGenerationService) {}
+  constructor(private readonly generationService: TimetableGenerationService) { }
 
   @Post()
   async generateTimetable(
@@ -18,5 +19,6 @@ export class TimetableGenerationController {
     @GetUserId() userId: number,
   ) {
     return this.generationService.generateAndZip(id, userId, res);
+
   }
 }

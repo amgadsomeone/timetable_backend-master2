@@ -28,7 +28,7 @@ export class GroupsService {
     @InjectRepository(SubGroup)
     private readonly subgroupRepository: Repository<SubGroup>,
     private readonly yearService: YearsService,
-  ) {}
+  ) { }
 
   async findByTimetable(timetableId: number, userId: number) {
     return this.groupRepository.find({
@@ -244,23 +244,22 @@ export class GroupsService {
   }
 
   async getGroupWithRelations(id: number, userId: number) {
-    const group = await this.groupRepository.findOne({
+    const group = await this.groupRepository.find({
       where: { id, timetable: { User: { id: userId } } },
       relations: {
-        activities: {
-          groups: true,
-          subGroups: true,
-          tags: true,
-          subject: true,
-          teachers: true,
-          years: true,
-        },
+        activities: true,
+        subGroups: true,
+        year: true,
+        timetable: true,
       },
       relationLoadStrategy: 'query',
     });
     if (!group) {
       throw new NotFoundException('Group not found');
     }
+    console.log(group);
+    return group;
+    /*
     return group.activities.map((activity) => ({
       id: activity.id,
       duration: activity.duration,
@@ -271,5 +270,7 @@ export class GroupsService {
       subGroups: activity.subGroups.map((sg) => ({ name: sg.name, id: sg.id })),
       tags: activity.tags.map((t) => ({ name: t.name, id: t.id })),
     }));
+    */
   }
 }
+

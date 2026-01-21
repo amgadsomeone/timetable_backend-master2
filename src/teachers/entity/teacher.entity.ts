@@ -1,6 +1,4 @@
 import { Activity } from 'src/activities/entity/activities.entity';
-import { SpaceConstraint } from 'src/constraints/entity/spaceConstraints/spaceConstrainsts.entity';
-import { MaxGapsPerWeekConstraint } from 'src/constraints/entity/timeConstraints/maxGapConstraints.entity';
 import { NotAvailableConstraint } from 'src/constraints/entity/timeConstraints/notavailableConstraints.entity';
 import { Subject } from 'src/subjects/entity/subjects.entity';
 import { Timetable } from 'src/timetable/entity/timetable.entity';
@@ -12,7 +10,6 @@ import {
   ManyToOne,
   JoinTable,
   OneToMany,
-  OneToOne,
   Unique,
 } from 'typeorm';
 
@@ -50,15 +47,23 @@ export class Teacher {
 
   @ManyToOne(() => Timetable, (timetable) => timetable.teachers, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   timetable: Timetable;
 
   @OneToMany(() => NotAvailableConstraint, (constraint) => constraint.teacher)
   NotAvailableConstraints: NotAvailableConstraint[];
-
+  /*
   @OneToMany(() => SpaceConstraint, (constraint) => constraint.teacher)
   spaceConstraints: SpaceConstraint[];
 
-  @OneToOne(() => MaxGapsPerWeekConstraint, (constraint) => constraint.teacher)
-  maxGapsPerWeek: MaxGapsPerWeekConstraint;
+    @OneToOne(() => MaxGapsPerWeekConstraint, (constraint) => constraint.teacher)
+    maxGapsPerWeek: MaxGapsPerWeekConstraint;
+  */
+
+  // if i was paid to do this i will make a separate entity to contain all the other constraints 
+  @Column({
+    nullable: true,
+  })
+  maxGapsPerDay?: number;
 }

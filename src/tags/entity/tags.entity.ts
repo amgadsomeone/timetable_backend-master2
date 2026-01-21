@@ -30,6 +30,7 @@ export class Tag {
 
   @ManyToOne(() => Timetable, (timetable) => timetable.tags, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   timetable: Timetable;
 }

@@ -1,3 +1,4 @@
+import { Activity } from 'src/activities/entity/activities.entity';
 import { Group } from 'src/groups/entity/groups.entity';
 import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
 import { Teacher } from 'src/teachers/entity/teacher.entity';
@@ -20,23 +21,19 @@ export class MaxGapsPerWeekConstraint {
   @Column({ type: 'integer' })
   maxGaps: number;
 
-  @ManyToOne(() => Timetable, { onDelete: 'CASCADE' })
-  @JoinColumn()
-  timetable?: Timetable;
-
-  @OneToOne(() => Teacher, { onDelete: 'CASCADE',nullable:true })
+  @OneToOne(() => Teacher, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
   teacher?: Teacher;
 
-  @OneToOne(() => Year, { onDelete: 'CASCADE',nullable:true })
+  @ManyToOne(() => Year, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
   year?: Year;
 
-  @OneToOne(() => Group, { onDelete: 'CASCADE',nullable:true })
+  @ManyToOne(() => Group, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
   group?: Group;
 
-  @OneToOne(() => SubGroup, { onDelete: 'CASCADE' , nullable:true})
+  @ManyToOne(() => SubGroup, { onDelete: 'CASCADE', nullable: true })
   @JoinColumn()
   subGroup?: SubGroup;
 }

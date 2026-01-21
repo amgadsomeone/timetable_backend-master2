@@ -11,7 +11,7 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SubgroupsService } from './subgroups.service';
 import { CreateSubGroupDto } from './dto/create-subgroup.dto';
 import { UpdateSubGroupDto } from './dto/update-subgroup.dto';
@@ -23,7 +23,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 @Controller('subgroups')
 @ApiBearerAuth('bearerAuth')
 export class SubgroupsController {
-  constructor(private readonly subgroupsService: SubgroupsService) {}
+  constructor(private readonly subgroupsService: SubgroupsService) { }
 
   @Get(':timetableId')
   findByTimetable(
@@ -73,3 +73,4 @@ export class SubgroupsController {
     return this.subgroupsService.deleteOne(timetableId, id, userId);
   }
 }
+

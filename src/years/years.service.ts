@@ -6,11 +6,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Year } from './entity/years.entity';
-import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { CreateYearDto } from './dto/create-year.dto';
 import { UpdateYearDto } from './dto/update-year.dto';
+import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { Group } from 'src/groups/entity/groups.entity';
 import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
@@ -27,27 +27,26 @@ export class YearsService {
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(SubGroup)
     private readonly subgroupRepository: Repository<SubGroup>,
-  ) {}
+  ) { }
 
   async findByTimetable(timetableId: number, userId: number) {
     return this.yearRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      order: { id: 'DESC' },
     });
   }
 
-  // should change this name 
+  // should change this name
   async findWithRelations(timetableId: number, userId: number) {
-    return this.yearRepository.find({
+    const years = await this.yearRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
-      order: { id: 'DESC' },
       relations: {
         groups: {
           subGroups: true,
         },
       },
-      relationLoadStrategy: 'query',
     });
+
+    return years;
   }
 
   async findYearsPaginated(
@@ -82,65 +81,67 @@ export class YearsService {
   }
 
   async createOne(timetableId: number, userId: number, dto: CreateYearDto) {
-    const createdYear = await this.createMany(timetableId, userId, [dto]);
-    return createdYear[0];
-  }
-
-  async ValidateNamesExist(timetableId: number, names: string[]) {
-    const namesExist = await this.timetableRepository.count({
-      relations: {
-        years: true,
-        groups: true,
-        subGroups: true,
-      },
-      where: [
-        {
-          id: timetableId,
-          years: { name: In(names) },
-        },
-        {
-          id: timetableId,
-          groups: { name: In(names) },
-        },
-        {
-          id: timetableId,
-          subGroups: { name: In(names) },
-        },
-      ],
-      relationLoadStrategy: 'query',
-    });
-    console.log(namesExist);
-    return namesExist > 0;
-  }
-
-  async createMany(timetableId: number, userId: number, dtos: CreateYearDto[]) {
     const timetable = await this.timetableRepository.findOne({
       where: { id: timetableId, User: { id: userId } },
     });
-
     if (!timetable) throw new NotFoundException();
-
-    const incomingNames = new Set<string>();
-
-    dtos.forEach((yeardto) => {
-      if (incomingNames.has(yeardto.name)) {
-        throw new ConflictException(
-          `Duplicate name "${yeardto.name}" found in the request.`,
-        );
-      }
-      incomingNames.add(yeardto.name);
+    const existing = await this.yearRepository.findOne({
+      where: { name: dto.name, timetable: { id: timetableId } as any },
     });
-    console.time('validatetest');
-    const nameExists = await this.ValidateNamesExist(timetableId, [
-      ...incomingNames,
-    ]);
-    console.timeEnd('validatetest');
+    if (existing) throw new ConflictException();
+    const entity = this.yearRepository.create({
+      name: dto.name,
+      timetable: { id: timetableId },
+    });
+    return this.yearRepository.save(entity as any);
+  }
 
-    if (nameExists) {
-      throw new ConflictException(
-        `this name already exist in the database in years or groups or subgroups.`,
+  async ValidateNamesExist(timetableId: number, names: string[]) {
+    const years = await this.yearRepository.find({
+      where: {
+        name: In(names),
+        timetable: { id: timetableId },
+      },
+      select: { name: true, id: true },
+    });
+    const foundNames = new Set(years.map((y) => y.name));
+    const missingNames = names.filter((name) => !foundNames.has(name));
+
+    if (missingNames.length > 0) {
+      throw new NotFoundException(
+        `The following year names do not exist: ${missingNames.join(', ')}`,
       );
     }
+
+    return years;
+  }
+
+  async createMany(
+    timetableId: number,
+    userId: number,
+    dtos: CreateYearDto[],
+  ) {
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+      relations: { years: true },
+      select: { id: true, User: { id: true }, years: { name: true } },
+    });
+    if (!timetable) throw new NotFoundException();
+    const existingNames = new Set(timetable.years.map((y) => y.name));
+    const incomingNames = new Set<string>();
+    dtos.forEach((dto) => {
+      if (existingNames.has(dto.name)) {
+        throw new BadRequestException(
+          `year name ${dto.name} already exist in this timetable`,
+        );
+      }
+      if (incomingNames.has(dto.name)) {
+        throw new ConflictException(
+          `Duplicate name "${dto.name}" found in the request.`,
+        );
+      }
+      incomingNames.add(dto.name);
+    });
     const entities = this.yearRepository.create(
       dtos.map((dto) => ({
         name: dto.name,
@@ -151,11 +152,9 @@ export class YearsService {
   }
 
   async findById(timetableId: number, id: number, userId: number) {
-    const year = await this.yearRepository.findOne({
+    return this.yearRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
     });
-    if (!year) throw new NotFoundException();
-    return year;
   }
 
   async updateOne(
@@ -164,47 +163,21 @@ export class YearsService {
     id: number,
     dto: UpdateYearDto,
   ) {
-    const existing = await this.yearRepository.findOne({
-      where: { id, timetable: { id: timetableId, User: { id: userId } } },
-    });
+    const existing = await this.findById(timetableId, id, userId);
     if (!existing) throw new NotFoundException();
 
     if (dto.name && dto.name !== existing.name) {
-      const yearExists = await this.yearRepository.find({
+      const conflict = await this.yearRepository.findOne({
         where: {
           name: dto.name,
           timetable: { id: timetableId, User: { id: userId } },
         },
       });
-      if (yearExists.length > 0) {
-        throw new BadRequestException(
-          `this time table has a already a year with this name: ${dto.name}`,
-        );
-      }
-      const groupExists = await this.groupRepository.find({
-        where: {
-          name: dto.name,
-          timetable: { id: timetableId, User: { id: userId } },
-        },
-      });
-      if (groupExists.length > 0)
-        throw new BadRequestException(
-          `this time table has a already a group with this name: ${dto.name}`,
-        );
-      const subGroupExists = await this.subgroupRepository.find({
-        where: {
-          name: dto.name,
-          timetable: { id: timetableId, User: { id: userId } },
-        },
-      });
-      if (subGroupExists.length > 0)
-        throw new BadRequestException(
-          `this time table has a already a subgroup with this name: ${dto.name}`,
-        );
+      if (conflict && conflict.id !== id) throw new ConflictException();
     }
 
     Object.assign(existing, dto);
-    return this.yearRepository.save(existing);
+    return this.yearRepository.save(existing as any);
   }
 
   async deleteOne(timetableId: number, id: number, userId: number) {
@@ -260,7 +233,7 @@ export class YearsService {
       }
     });
 
-    const result = await this.yearRepository.save(toUpdate);
+    const result = await this.yearRepository.save(toUpdate as any);
     return result.length;
   }
 
@@ -294,3 +267,4 @@ export class YearsService {
     }));
   }
 }
+

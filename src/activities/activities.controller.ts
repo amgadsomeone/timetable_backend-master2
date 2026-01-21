@@ -22,7 +22,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 @Controller('activities')
 @ApiBearerAuth('bearerAuth')
 export class ActivitiesController {
-  constructor(private readonly activitiesService: ActivitiesService) {}
+  constructor(private readonly activitiesService: ActivitiesService) { }
 
   @Get(':timetableId')
   findByTimetable(
@@ -58,9 +58,9 @@ export class ActivitiesController {
     );
 
 
-    
+
     console.timeEnd('addactivity');
-    return {act};
+    return { act };
   }
 
   @Get(':timetableId/item/:id')
@@ -80,6 +80,10 @@ export class ActivitiesController {
     @Body() dto: UpdateActivityDto,
     @GetUserId() userId: number,
   ) {
+    console.log(dto);
+    console.log(id);
+    console.log(timetableId);
+    console.log(userId);
     return this.activitiesService.updateOne(timetableId, id, userId, dto);
   }
 

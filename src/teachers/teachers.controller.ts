@@ -28,7 +28,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 @Controller('teachers')
 @ApiBearerAuth('bearerAuth')
 export class TeachersController {
-  constructor(private readonly teachersService: TeachersService) {}
+  constructor(private readonly teachersService: TeachersService) { }
 
   @Get(':timeTable')
   @ApiOperation({ summary: 'Get teachers by timeTableId' })
@@ -81,3 +81,4 @@ export class TeachersController {
     return this.teachersService.deleteOne(timetableId, id, userId);
   }
 }
+

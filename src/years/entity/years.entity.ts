@@ -1,5 +1,4 @@
 import { Activity } from 'src/activities/entity/activities.entity';
-import { SpaceConstraint } from 'src/constraints/entity/spaceConstraints/spaceConstrainsts.entity';
 import { MaxGapsPerWeekConstraint } from 'src/constraints/entity/timeConstraints/maxGapConstraints.entity';
 import { NotAvailableConstraint } from 'src/constraints/entity/timeConstraints/notavailableConstraints.entity';
 import { Group } from 'src/groups/entity/groups.entity';
@@ -35,15 +34,19 @@ export class Year {
 
   @ManyToOne(() => Timetable, (timetable) => timetable.years, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   timetable: Timetable;
 
   @OneToMany(() => NotAvailableConstraint, (constraint) => constraint.year)
   NotAvailableConstraints: NotAvailableConstraint[];
 
-  @OneToMany(() => SpaceConstraint, (constraint) => constraint.year)
-  spaceConstraints: SpaceConstraint[];
 
   @OneToOne(() => MaxGapsPerWeekConstraint, (constraint) => constraint.year)
   maxGapsPerWeek: MaxGapsPerWeekConstraint;
+
+  @Column({
+    nullable: true,
+  })
+  maxGapsPerDay?: number;
 }
