@@ -223,7 +223,6 @@ export class TimetableService {
     if (!result) {
       throw new NotFoundException('Timetable was not found.');
     }
-
     return {
       id: result.id,
       name: result.name,

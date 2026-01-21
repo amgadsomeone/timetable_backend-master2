@@ -11,6 +11,12 @@ import { Timetable } from 'src/timetable/entity/timetable.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
+import { Year } from 'src/years/entity/years.entity';
+import { Teacher } from 'src/teachers/entity/teacher.entity';
+import { Group } from 'src/groups/entity/groups.entity';
+import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
+import { Tag } from 'src/tags/entity/tags.entity';
+import { Subject } from 'src/subjects/entity/subjects.entity';
 
 @Injectable()
 export class ActivitiesService {
@@ -93,89 +99,132 @@ export class ActivitiesService {
     return createdActivities[0];
   }
 
-  private async validateActivites(
-    timetableId,
-    userID: number,
-    dtos: CreateActivityDto[],
-  ) {
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: timetableId, User: { id: userID } },
-      relations: {
-        teachers: true,
-        years: true,
-        groups: true,
-        subGroups: true,
-        tags: true,
-        subjects: true,
-        hours: true,
-      },
-      select: {
-        id: true,
-        teachers: { id: true },
-        years: { id: true },
-        groups: { id: true },
-        subGroups: { id: true },
-        tags: { id: true },
-        subjects: { id: true },
-        hours: { id: true },
-      },
-      relationLoadStrategy: 'query',
-    });
 
-    if (!timetable) throw new NotFoundException('Timetable not found');
 
-    const validTeacherIds = new Set(timetable.teachers.map((t) => t.id));
-    const validYearIds = new Set(timetable.years.map((y) => y.id));
-    const validGroupIds = new Set(timetable.groups.map((g) => g.id));
-    const validSubGroupIds = new Set(timetable.subGroups.map((s) => s.id));
-    const validTagIds = new Set(timetable.tags.map((t) => t.id));
-    const validSubjectIds = new Set(timetable.subjects.map((s) => s.id));
+  private async validateActivites(timetableId: number, dtos: CreateActivityDto[]) {
+    const yearIds = [...new Set(dtos.flatMap((d) => d.years || []))];
+    const teacherIds = [...new Set(dtos.flatMap((d) => d.teachers || []))];
+    const groupIds = [...new Set(dtos.flatMap((d) => d.groups || []))];
+    const subGroupIds = [...new Set(dtos.flatMap((d) => d.subGroups || []))];
+    const tagIds = [...new Set(dtos.flatMap((d) => d.tags || []))];
+    const subjectIds = [...new Set(dtos.map((d) => d.subjectId).filter((id) => !!id))];
 
-    for (const dto of dtos) {
-      if (dto.duration > timetable.hours.length) {
-        throw new BadRequestException(
-          `max durathion for this timetable is ${timetable.hours.length}`,
-        );
-      }
-      // Validate Teachers
-      if (dto.teachers?.some((id) => !validTeacherIds.has(id))) {
-        throw new BadRequestException(
-          `One or more Teachers do not belong to this timetable.`,
-        );
-      }
-      // Validate Years
-      if (dto.years?.some((id) => !validYearIds.has(id))) {
-        throw new BadRequestException(
-          `One or more Years do not belong to this timetable.`,
-        );
-      }
-      // Validate Groups
-      if (dto.groups?.some((id) => !validGroupIds.has(id))) {
-        throw new BadRequestException(
-          `One or more Groups do not belong to this timetable.`,
-        );
-      }
-      // Validate SubGroups
-      if (dto.subGroups?.some((id) => !validSubGroupIds.has(id))) {
-        throw new BadRequestException(
-          `One or more SubGroups do not belong to this timetable.`,
-        );
-      }
-      // Validate Tags
-      if (dto.tags?.some((id) => !validTagIds.has(id))) {
-        throw new BadRequestException(
-          `One or more Tags do not belong to this timetable.`,
-        );
-      }
-      // Validate Subject (Single ID)
-      if (dto.subjectId && !validSubjectIds.has(dto.subjectId)) {
-        throw new BadRequestException(
-          `The Subject does not belong to this timetable.`,
-        );
-      }
+    const query = this.timetableRepository
+      .createQueryBuilder('timetable')
+      .select('timetable.id');
+
+    if (yearIds.length > 0) {
+      query.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Year, 'year')
+            .where('year.id IN (:...yearIds)')
+            .andWhere('year.timetableId = :timetableId'),
+        'yearsFoundCount',
+      );
     }
 
-    return true;
+    if (teacherIds.length > 0) {
+      query.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Teacher, 'teacher')
+            .where('teacher.id IN (:...teacherIds)')
+            .andWhere('teacher.timetableId = :timetableId'),
+        'teachersFoundCount',
+      );
+    }
+
+    if (groupIds.length > 0) {
+      query.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Group, 'group')
+            .where('group.id IN (:...groupIds)')
+            .andWhere('group.timetableId = :timetableId'),
+        'groupsFoundCount',
+      );
+    }
+
+    if (subGroupIds.length > 0) {
+      query.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(SubGroup, 'subGroup')
+            .where('subGroup.id IN (:...subGroupIds)')
+            .andWhere('subGroup.timetableId = :timetableId'),
+        'subGroupsFoundCount',
+      );
+    }
+
+    if (tagIds.length > 0) {
+      query.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Tag, 'tag')
+            .where('tag.id IN (:...tagIds)')
+            .andWhere('tag.timetableId = :timetableId'),
+        'tagsFoundCount',
+      );
+    }
+
+    if (subjectIds.length > 0) {
+      query.addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Subject, 'subject')
+            .where('subject.id IN (:...subjectIds)')
+            .andWhere('subject.timetableId = :timetableId'),
+        'subjectsFoundCount',
+      );
+    }
+
+    const result = await query
+      .setParameters({
+        timetableId,
+        yearIds,
+        teacherIds,
+        groupIds,
+        subGroupIds,
+        tagIds,
+        subjectIds,
+      })
+      .where('timetable.id = :timetableId', { timetableId })
+      .getRawOne();
+
+    if (!result) {
+      throw new BadRequestException('Timetable not found');
+    }
+
+    if (yearIds.length > 0 && Number(result.yearsFoundCount || 0) !== yearIds.length) {
+      throw new BadRequestException('One or more Years do not belong to this timetable.');
+    }
+
+    if (teacherIds.length > 0 && Number(result.teachersFoundCount || 0) !== teacherIds.length) {
+      throw new BadRequestException('One or more Teachers do not belong to this timetable.');
+    }
+
+    if (groupIds.length > 0 && Number(result.groupsFoundCount || 0) !== groupIds.length) {
+      throw new BadRequestException('One or more Groups do not belong to this timetable.');
+    }
+
+    if (subGroupIds.length > 0 && Number(result.subGroupsFoundCount || 0) !== subGroupIds.length) {
+      throw new BadRequestException('One or more SubGroups do not belong to this timetable.');
+    }
+
+    if (tagIds.length > 0 && Number(result.tagsFoundCount || 0) !== tagIds.length) {
+      throw new BadRequestException('One or more Tags do not belong to this timetable.');
+    }
+
+    if (subjectIds.length > 0 && Number(result.subjectsFoundCount || 0) !== subjectIds.length) {
+      throw new BadRequestException('One or more Subjects do not belong to this timetable.');
+    }
   }
 
   async createMany(
@@ -183,7 +232,13 @@ export class ActivitiesService {
     userId: number,
     dtos: CreateActivityDto[],
   ) {
-    await this.validateActivites(timetableId, userId, dtos);
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+    });
+    if (!timetable) {
+      throw new BadRequestException('Timetable not found');
+    }
+    await this.validateActivites(timetableId, dtos);
 
     const entitiesToSave = dtos.map((activity) =>
       this.activityRepository.create({
@@ -224,6 +279,12 @@ export class ActivitiesService {
     userId: number,
     dto: UpdateActivityDto,
   ) {
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+    });
+    if (!timetable) {
+      throw new BadRequestException('Timetable not found');
+    }
     const existing = await this.activityRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
     });
@@ -232,7 +293,7 @@ export class ActivitiesService {
     }
     if (dto.duration !== undefined) existing.duration = dto.duration;
 
-    await this.validateActivites(timetableId, userId, [
+    await this.validateActivites(timetableId, [
       dto as CreateActivityDto,
     ]);
     if (dto.subjectId) existing.subject = { id: dto.subjectId } as any;
@@ -283,6 +344,12 @@ export class ActivitiesService {
     userId: number,
     updates: { id: number; data: Partial<CreateActivityDto> }[],
   ) {
+    const timetable = await this.timetableRepository.findOne({
+      where: { id: timetableId, User: { id: userId } },
+    });
+    if (!timetable) {
+      throw new BadRequestException('Timetable not found');
+    }
     const ids = updates.map((u) => u.id);
 
     const toUpdate = await this.activityRepository.find({
@@ -299,7 +366,6 @@ export class ActivitiesService {
     }
     await this.validateActivites(
       timetableId,
-      userId,
       updates.map((u) => u.data as CreateActivityDto),
     );
     toUpdate.forEach((activity) => {
