@@ -85,7 +85,10 @@ export class GroupsService {
       relations: { years: true },
       select: { years: { id: true }, id: true },
     });
+    if (!timetable) throw new NotFoundException();
+
     const yearIds = new Set(timetable?.years.map((year) => year.id) || []);
+
     dtos.forEach((dto) => {
       if (!yearIds.has(dto.yearId)) {
         throw new BadRequestException(
@@ -93,7 +96,6 @@ export class GroupsService {
         );
       }
     });
-    if (!timetable) throw new NotFoundException();
 
     const incomingNames = new Set<string>();
 
@@ -105,14 +107,9 @@ export class GroupsService {
       }
       incomingNames.add(dto.name);
     });
-    const nameExists = await this.yearService.ValidateNamesExist(timetableId, [
+    await this.yearService.ValidateNamesExist(timetableId, [
       ...incomingNames,
     ]);
-    if (nameExists) {
-      throw new ConflictException(
-        `this name already exist in the database in years or groups or subgroups.`,
-      );
-    }
     const entities = this.groupRepository.create(
       dtos.map((dto) => ({
         name: dto.name,
@@ -156,15 +153,10 @@ export class GroupsService {
     }
 
     if (dto.name && dto.name !== existing.name) {
-      const nameExists = await this.yearService.ValidateNamesExist(
+      await this.yearService.ValidateNamesExist(
         timetableId,
         [dto.name],
       );
-      if (nameExists) {
-        throw new ConflictException(
-          `this name already exist in the database in years or groups or subgroups.`,
-        );
-      }
     }
 
     Object.assign(existing, dto);

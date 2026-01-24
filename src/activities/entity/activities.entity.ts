@@ -25,7 +25,7 @@ export class Activity {
   })
   duration: number;
 
-  @ManyToOne(() => Subject, (subject) => subject.activities)
+  @ManyToOne(() => Subject, (subject) => subject.activities, { onDelete: 'CASCADE' })
   subject: Subject;
 
   @ManyToMany(() => Teacher, (teacher) => teacher.activities)

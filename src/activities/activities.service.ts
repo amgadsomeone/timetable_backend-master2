@@ -94,14 +94,12 @@ export class ActivitiesService {
     userId: number,
     dto: CreateActivityDto,
   ): Promise<Activity> {
-    const createdActivities = await this.createMany(timetableId, userId, [dto]);
-    console.log(createdActivities);
-    return createdActivities[0];
+    return this.createMany(timetableId, userId, [dto])[0];
   }
 
 
 
-  private async validateActivites(timetableId: number, dtos: CreateActivityDto[]) {
+  private async validateActivites(timetableId: number, userId: number, dtos: CreateActivityDto[]) {
     const yearIds = [...new Set(dtos.flatMap((d) => d.years || []))];
     const teacherIds = [...new Set(dtos.flatMap((d) => d.teachers || []))];
     const groupIds = [...new Set(dtos.flatMap((d) => d.groups || []))];
@@ -194,8 +192,9 @@ export class ActivitiesService {
         subGroupIds,
         tagIds,
         subjectIds,
-      })
+      }).innerJoin('timetable.User', 'user')
       .where('timetable.id = :timetableId', { timetableId })
+      .andWhere('user.id = :userId', { userId })
       .getRawOne();
 
     if (!result) {
@@ -232,13 +231,8 @@ export class ActivitiesService {
     userId: number,
     dtos: CreateActivityDto[],
   ) {
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: timetableId, User: { id: userId } },
-    });
-    if (!timetable) {
-      throw new BadRequestException('Timetable not found');
-    }
-    await this.validateActivites(timetableId, dtos);
+
+    await this.validateActivites(timetableId, userId, dtos);
 
     const entitiesToSave = dtos.map((activity) =>
       this.activityRepository.create({
@@ -279,12 +273,6 @@ export class ActivitiesService {
     userId: number,
     dto: UpdateActivityDto,
   ) {
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: timetableId, User: { id: userId } },
-    });
-    if (!timetable) {
-      throw new BadRequestException('Timetable not found');
-    }
     const existing = await this.activityRepository.findOne({
       where: { id, timetable: { id: timetableId, User: { id: userId } } },
     });
@@ -293,7 +281,7 @@ export class ActivitiesService {
     }
     if (dto.duration !== undefined) existing.duration = dto.duration;
 
-    await this.validateActivites(timetableId, [
+    await this.validateActivites(timetableId, userId, [
       dto as CreateActivityDto,
     ]);
     if (dto.subjectId) existing.subject = { id: dto.subjectId } as any;
@@ -344,12 +332,6 @@ export class ActivitiesService {
     userId: number,
     updates: { id: number; data: Partial<CreateActivityDto> }[],
   ) {
-    const timetable = await this.timetableRepository.findOne({
-      where: { id: timetableId, User: { id: userId } },
-    });
-    if (!timetable) {
-      throw new BadRequestException('Timetable not found');
-    }
     const ids = updates.map((u) => u.id);
 
     const toUpdate = await this.activityRepository.find({
@@ -366,6 +348,7 @@ export class ActivitiesService {
     }
     await this.validateActivites(
       timetableId,
+      userId,
       updates.map((u) => u.data as CreateActivityDto),
     );
     toUpdate.forEach((activity) => {

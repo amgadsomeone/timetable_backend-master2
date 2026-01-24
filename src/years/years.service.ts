@@ -15,6 +15,7 @@ import { Group } from 'src/groups/entity/groups.entity';
 import { SubGroup } from 'src/subgroups/entity/subgroups.entity';
 import { PaginatedResult, PaginationDto } from 'src/common/dto/pagination.dto';
 import { In } from 'typeorm';
+import { group } from 'console';
 
 @Injectable()
 export class YearsService {
@@ -97,23 +98,53 @@ export class YearsService {
   }
 
   async ValidateNamesExist(timetableId: number, names: string[]) {
-    const years = await this.yearRepository.find({
-      where: {
-        name: In(names),
-        timetable: { id: timetableId },
-      },
-      select: { name: true, id: true },
-    });
-    const foundNames = new Set(years.map((y) => y.name));
-    const missingNames = names.filter((name) => !foundNames.has(name));
+    const result = await this.timetableRepository.createQueryBuilder('t')
+      .select('t.id')
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Year, 'year')
+            .where('year.name IN (:...names)', { names })
+            .andWhere('year.timetableId = :timetableId'),
+        'yearsFoundCount',
+      )
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(Group, 'group')
+            .where('group.name IN (:...names)', { names })
+            .andWhere('group.timetableId = :timetableId'),
+        'groupFoundCount',
+      )
+      .addSelect(
+        (sub) =>
+          sub
+            .select('COUNT(*)')
+            .from(SubGroup, 'subgroup')
+            .where('subgroup.name IN (:...names)', { names })
+            .andWhere('subgroup.timetableId = :timetableId'),
+        'subgroupFoundCount',
+      )
+      .where('t.id = :timetableId', { timetableId })
+      .getRawOne();
 
-    if (missingNames.length > 0) {
-      throw new NotFoundException(
-        `The following year names do not exist: ${missingNames.join(', ')}`,
+    if (result.yearsFoundCount > 0) {
+      throw new ConflictException(
+        'this name already taken by a year please consider another name',
       );
     }
-
-    return years;
+    if (result.groupFoundCount > 0) {
+      throw new ConflictException(
+        'this name already taken by a group please consider another name',
+      );
+    }
+    if (result.subgroupFoundCount > 0) {
+      throw new ConflictException(
+        'this name already taken by a subgroup please consider another name',
+      );
+    }
   }
 
   async createMany(
@@ -206,6 +237,7 @@ export class YearsService {
     return res.length;
   }
 
+  // we should ValidateNamesExist here 
   async updateMany(
     timetableId: number,
     userId: number,
@@ -219,7 +251,6 @@ export class YearsService {
         timetable: { id: timetableId, User: { id: userId } },
       },
     });
-
     if (toUpdate.length !== ids.length) {
       throw new ForbiddenException(
         'Some years were not found or you do not have permission to update them',

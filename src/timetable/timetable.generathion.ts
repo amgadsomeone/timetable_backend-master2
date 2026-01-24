@@ -11,7 +11,6 @@ import * as path from 'path';
 import * as os from 'os';
 import { FetExportService } from './fet.service';
 import { TimetableService } from './timetable.service';
-import { JSDOM } from 'jsdom';
 import { ConfigService } from '@nestjs/config'; // Import ConfigService
 import type { Response } from 'express';
 import archiver = require('archiver');
@@ -22,7 +21,7 @@ export class TimetableGenerationService {
     private readonly timetablesService: TimetableService,
     private readonly fetExportService: FetExportService,
     private readonly configService: ConfigService, // Inject ConfigService
-  ) {}
+  ) { }
 
   async generateAndZip(timetableId: number, userId: number, res: Response) {
     console.time('test');
@@ -173,7 +172,44 @@ export class TimetableGenerationService {
       // 3. Run the non-blocking generation process
       await this.runFetGenerator(inputFilePath, rawOutputDirPath);
 
+      // 4. Filter and process output files
+      const fileMapping = {
+        'input_years_days_horizontal.html': 'Years.html',
+        'input_teachers_days_horizontal.html': 'Teachers.html',
+        'input_subjects_days_horizontal.html': 'Subjects.html',
+        'input_subgroups_days_horizontal.html': 'Subgroups.html',
+        'input_groups_days_horizontal.html': 'Groups.html',
+        'input_activities_days_horizontal.html': 'Activities.html',
+      };
+
+      const fetInputFolder = path.join(rawOutputDirPath, 'timetables', 'input');
+
+      const processingPromises = Object.entries(fileMapping).map(
+        async ([originalName, newName]) => {
+          const inputPath = path.join(fetInputFolder, originalName);
+          const outputPath = path.join(finalOutputDirPath, newName);
+          try {
+            await fs.access(inputPath);
+            await fs.copyFile(inputPath, outputPath);
+          } catch (e) {
+            console.warn(`Warning: File ${originalName} not found.`);
+          }
+        },
+      );
+
+      await Promise.all(processingPromises);
+
+      // 5. Copy style.css to final output
+      const cssSourcePath = path.join(__dirname, 'css', 'input_stylesheet.css');
+      const cssDestPath = path.join(finalOutputDirPath, 'input_stylesheet.css');
+      try {
+        await fs.copyFile(cssSourcePath, cssDestPath);
+      } catch (e) {
+        console.error('Failed to copy style.css:', e);
+      }
+
       const archive = archiver('zip', { zlib: { level: 9 } });
+      console.log(operationDir);
 
       // The 'finish' event on the response is the correct and reliable way to know when to cleanup.
       res.on('finish', () => {
@@ -188,13 +224,11 @@ export class TimetableGenerationService {
       });
 
       archive.pipe(res);
-      archive.directory(rawOutputDirPath, false);
+      archive.directory(finalOutputDirPath, false);
       await archive.finalize();
     } catch (error) {
       // If an error occurs before streaming, clean up immediately and throw
-      await fs
-        .rm(operationDir, { recursive: true, force: true })
-        .catch(() => {});
+      await fs.rm(operationDir, { recursive: true, force: true }).catch(() => { });
       console.error('Error during timetable generation:', error);
       throw new InternalServerErrorException(
         `Failed to generate timetable: ${error.message}`,
@@ -225,7 +259,7 @@ export class TimetableGenerationService {
       let stderr = '';
 
       // The server remains responsive while listening to these streams
- 
+
       process.stderr.on('data', (data) => {
         console.error(`fet-cl stderr: ${data}`);
         stderr += data.toString();
@@ -252,43 +286,4 @@ export class TimetableGenerationService {
       });
     });
   }
-
-  async extractTablesOnly(htmlString) {
-    const dom = new JSDOM(htmlString);
-
-    const document = dom.window.document;
-
-    const tables = document.querySelectorAll('table');
-
-    tables.forEach((table) => {
-      const footerRows = table.querySelectorAll('tr.foot');
-      footerRows.forEach((row) => row.remove());
-    });
-
-    let result =
-      '<!DOCTYPE html>\n<html>\n<head>\n<meta charset="UTF-8">\n<title>Tables Only</title>\n<link rel="stylesheet" href="style.css" type="text/css" />\n</head>\n<body>\n\n';
-
-    tables.forEach((table) => {
-      result += table.outerHTML + '\n\n';
-    });
-
-    result += '</body>\n</html>';
-
-    return result;
-  }
-  // processFile and extractTablesOnly methods remain the same as your refactored version
-  // ... (make sure processFile throws errors instead of exiting)
-  async processFile(inputPath, outputPath) {
-    try {
-      const htmlContent = await fs.readFile(inputPath, 'utf8');
-      const tablesOnly = await this.extractTablesOnly(htmlContent);
-      await fs.writeFile(outputPath, tablesOnly, 'utf8');
-    } catch (error) {
-      console.error(`Error processing file ${inputPath}:`, error.message);
-      // Re-throw the error so Promise.all can catch it
-      throw new InternalServerErrorException(`Failed to process ${inputPath}`);
-    }
-  }
-
-  // ... extractTablesOnly ...
 }

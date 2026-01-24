@@ -139,7 +139,7 @@ export class TeachersService {
     dtos.forEach((dto) => {
       if (existingNames.has(dto.name)) {
         throw new BadRequestException(
-          `hour name ${dto.name} already exist in this timetable`,
+          `teacher name ${dto.name} already exist in this timetable`,
         );
       }
       if (incomingNames.has(dto.name)) {

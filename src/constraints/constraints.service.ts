@@ -155,7 +155,7 @@ export class ConstraintsService {
         const constraints = await this.notAvailableRepository.find({
             where: {
                 id: In(id), teacher: { timetable: { User: { id: userId } } },
-                user: { id: userId },
+                timetable: { id: timetableId, User: { id: userId } }
             },
         });
         if (!constraints) throw new NotFoundException('Constraint not found or access denied');

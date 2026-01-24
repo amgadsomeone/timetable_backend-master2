@@ -101,14 +101,9 @@ export class SubgroupsService {
       }
       incomingNames.add(dto.name);
     });
-    const nameExists = await this.yearService.ValidateNamesExist(timetableId, [
+    await this.yearService.ValidateNamesExist(timetableId, [
       ...incomingNames,
     ]);
-    if (nameExists) {
-      throw new ConflictException(
-        `this name already exist in the database in years or groups or subgroups.`,
-      );
-    }
     const entities = this.subGroupRepository.create(
       dtos.map((dto) => ({
         name: dto.name,
@@ -154,15 +149,10 @@ export class SubgroupsService {
     }
 
     if (dto.name && dto.name !== existing.name) {
-      const nameExists = await this.yearService.ValidateNamesExist(
+      await this.yearService.ValidateNamesExist(
         timetableId,
         [dto.name],
       );
-      if (nameExists) {
-        throw new ConflictException(
-          `this name already exist in the database in years or groups or subgroups.`,
-        );
-      }
     }
 
     Object.assign(existing, dto);
