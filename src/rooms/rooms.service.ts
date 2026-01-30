@@ -135,7 +135,6 @@ export class RoomsService {
     userId: number,
     dto: UpdateRoomDto,
   ) {
-    console.log(buildingId)
     const existing = await this.roomRepository.findOne({
       where: {
         id,

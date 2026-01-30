@@ -678,7 +678,6 @@ export class AgentTools {
       if (!activities || activities.length === 0) {
         return `No activities found for this ${entityType}.`;
       }
-      console.log(activities);
       const formattedActivities = activities.map((activity) => ({
         ActivityID: activity.id,
         Subject: activity.subject?.name || '',

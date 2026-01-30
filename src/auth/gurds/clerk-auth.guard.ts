@@ -24,7 +24,9 @@ export class ClerkAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const token = request.headers?.authorization?.split(' ')[1];
     if (!token) return false;
+
     try {
+      
       const payload = await verifyToken(token, {
         jwtKey: this.ConfigService.getOrThrow('CLERK_JWT_KEY'),
       });

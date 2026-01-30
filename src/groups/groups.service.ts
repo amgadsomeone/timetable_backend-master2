@@ -249,7 +249,6 @@ export class GroupsService {
     if (!group) {
       throw new NotFoundException('Group not found');
     }
-    console.log(group);
     return group;
     /*
     return group.activities.map((activity) => ({

@@ -209,7 +209,6 @@ export class TimetableGenerationService {
       }
 
       const archive = archiver('zip', { zlib: { level: 9 } });
-      console.log(operationDir);
 
       // The 'finish' event on the response is the correct and reliable way to know when to cleanup.
       res.on('finish', () => {

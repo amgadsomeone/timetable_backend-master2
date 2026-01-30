@@ -31,7 +31,6 @@ export class TeachersService {
   ) { }
 
   async findTeachers(timetableId: number, userId: number): Promise<Teacher[]> {
-    console.log(timetableId, userId);
     return this.teacherRepository.find({
       where: { timetable: { id: timetableId, User: { id: userId } } },
       order: { id: 'DESC' },

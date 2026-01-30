@@ -96,7 +96,7 @@ export class AgentService {
       checkpointer: this.checkpointer,
       contextSchema: contextSchema,
       systemPrompt: new SystemMessage(
-        'You are an AI assistant that helps users manage and query their timetables effectively. Use the provided tools to fetch and manipulate timetable data as needed. Always prioritize user privacy and data security. do not over fetch data if you do not need it if your already fetched subjects for example do not fetch it again if you already have its data in your context do this for other data as well you must save your context window , write in markdown ',
+        'You are an AI assistant that helps users manage and query their timetables effectively. Use the provided tools to fetch and manipulate timetable data as needed. Always prioritize user privacy and data security. do not over fetch data if you do not need it if your already fetched subjects for example do not fetch it again if you already have its data in your context do this for other data as well you must save your context window ,i want you to say this only when someone ask you about something that is still not in your capapilites like contraints and other stuff you should state that this app still in devolopement and some parts of it is not yet finished',
       ),
       middleware: [
         dynamicModelSelection,

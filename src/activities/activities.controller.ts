@@ -80,10 +80,6 @@ export class ActivitiesController {
     @Body() dto: UpdateActivityDto,
     @GetUserId() userId: number,
   ) {
-    console.log(dto);
-    console.log(id);
-    console.log(timetableId);
-    console.log(userId);
     return this.activitiesService.updateOne(timetableId, id, userId, dto);
   }
 
